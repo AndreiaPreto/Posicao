@@ -20,43 +20,39 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasAny(['uid', 'name', 'email', 'whatsapp', 'role']) &&
-             (!('name' in data) || (data.name is string && data.name.size() < 100)) &&
+      return (!('name' in data) || (data.name is string && data.name.size() < 100)) &&
              (!('email' in data) || (data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))) &&
              (!('role' in data) || (data.role in ['admin', 'user']));
     }
 
     function isValidDiagnostico(data) {
-      return data.keys().hasAll(['userId', 'archetype', 'theme']) &&
-             data.userId is string &&
-             data.archetype is string &&
-             data.theme is string;
+      return (!('userId' in data) || data.userId is string) &&
+             (!('archetype' in data) || data.archetype is string) &&
+             (!('theme' in data) || data.theme is string);
     }
 
     function isValidMapping(data) {
-      return data.keys().hasAll(['userId', 'createdAt', 'emocao', 'padrao', 'defesa', 'ferida', 'desejo', 'arquetipo', 'florais', 'result', 'alignmentScore', 'phrase']) &&
-             data.userId is string &&
-             data.createdAt is string &&
-             data.emocao is string &&
-             data.padrao is string &&
-             data.defesa is string &&
-             data.ferida is string &&
-             data.desejo is string &&
-             data.arquetipo is string &&
-             data.florais is string &&
-             data.result is string &&
-             data.alignmentScore is number &&
-             data.phrase is string;
+      return (!('userId' in data) || data.userId is string) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('emocao' in data) || data.emocao is string) &&
+             (!('padrao' in data) || data.padrao is string) &&
+             (!('defesa' in data) || data.defesa is string) &&
+             (!('ferida' in data) || data.ferida is string) &&
+             (!('desejo' in data) || data.desejo is string) &&
+             (!('arquetipo' in data) || data.arquetipo is string) &&
+             (!('florais' in data) || data.florais is string) &&
+             (!('result' in data) || data.result is string) &&
+             (!('alignmentScore' in data) || data.alignmentScore is number) &&
+             (!('phrase' in data) || data.phrase is string);
     }
 
     function isValidReprogramacaoRequest(data) {
-      return data.keys().hasAll(['userId', 'productName', 'estadoEmocional', 'objetivo', 'status', 'createdAt']) &&
-             data.userId is string &&
-             data.productName is string &&
-             data.estadoEmocional is string &&
-             data.objetivo is string &&
-             data.status in ['pending', 'completed'] &&
-             data.createdAt is string;
+      return (!('userId' in data) || data.userId is string) &&
+             (!('productName' in data) || data.productName is string) &&
+             (!('estadoEmocional' in data) || data.estadoEmocional is string) &&
+             (!('objetivo' in data) || data.objetivo is string) &&
+             (!('status' in data) || data.status in ['pending', 'completed']) &&
+             (!('createdAt' in data) || data.createdAt is string);
     }
 
     // ===============================================================
@@ -69,10 +65,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
-                    (isOwner(userId) && request.resource.data.role == 'user' || isAdmin());
-      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
-                    ((isOwner(userId) && (request.resource.data.role == resource.data.role || !('role' in request.resource.data))) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    ((!('role' in request.resource.data) || request.resource.data.role == resource.data.role) || isAdmin());
       allow delete: if isAdmin();
     }
 
