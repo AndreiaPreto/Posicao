@@ -51,7 +51,102 @@ const meditations = [
   }
 ];
 
-type Page = 'home' | 'diagnostico_info' | 'reprogramacao_pessoal_info' | 'clube_clarear_info' | 'clube_taro_info' | 'reprogramar_eu_info' | 'diagnostico_quiz_intro' | 'intro' | 'quiz' | 'analysis' | 'final' | 'auth' | 'checkout' | 'clube_clarear_content' | 'clube_taro_content' | 'admin_dashboard' | 'dashboard' | 'mapeamento_intro' | 'mapeamento_form' | 'mapeamento_analysis' | 'mapeamento_result' | 'jornada_emocional' | 'confirmation' | 'reprogramacao_form' | 'triage_quiz' | 'triage_result';
+const rituais_mes = [
+  {
+    id: 1,
+    date: "01 de Abril",
+    title: "Ritual de Transbordo",
+    phase: "Lua Cheia",
+    description: "Ritual para reconhecer conquistas, liberar excessos e equilibrar emoções intensas.",
+    benefits: [
+      "Clareza emocional",
+      "Liberação energética",
+      "Expansão espiritual"
+    ],
+    importance: "A lua cheia amplifica energias — este ritual ajuda a canalizar essa força com consciência.",
+    price: "R$ 21"
+  },
+  {
+    id: 2,
+    date: "05 de Abril",
+    title: "Ritual de Renascimento",
+    phase: "Páscoa",
+    description: "Ritual simbólico de transformação e ativação de uma nova identidade.",
+    benefits: [
+      "Reprogramação emocional",
+      "Abertura de novos ciclos",
+      "Fortalecimento de propósito"
+    ],
+    importance: "A Páscoa é um portal energético ideal para renascer de forma consciente.",
+    price: "R$ 21"
+  },
+  {
+    id: 3,
+    date: "09 de Abril",
+    title: "Ritual de Desapego",
+    phase: "Lua Minguante",
+    description: "Limpeza energética e desapego de padrões, objetos e vínculos.",
+    benefits: [
+      "Leveza emocional",
+      "Redução de bloqueios",
+      "Clareza mental"
+    ],
+    importance: "Desapegar é essencial para permitir a entrada do novo.",
+    price: "R$ 21"
+  },
+  {
+    id: 4,
+    date: "17 de Abril",
+    title: "Ritual de Semeadura",
+    phase: "Lua Nova",
+    description: "Plantio de intenções e alinhamento energético com novos objetivos.",
+    benefits: [
+      "Foco e direção",
+      "Ativação da manifestação",
+      "Clareza de metas"
+    ],
+    importance: "Toda realidade começa com uma intenção bem definida.",
+    price: "R$ 21"
+  },
+  {
+    id: 5,
+    date: "23 de Abril",
+    title: "Ritual de Abertura de Caminhos",
+    phase: "Energia Espiritual",
+    spiritual: "São Jorge / Ogum",
+    description: "Ritual de força, proteção e desbloqueio de caminhos.",
+    benefits: ["Coragem", "Proteção", "Abertura de oportunidades"],
+    importance: "Conecta intenção com ação e avanço.",
+    price: "R$ 21"
+  },
+  {
+    id: 6,
+    date: "24 de Abril",
+    title: "Ritual de Expansão",
+    phase: "Lua Crescente",
+    description: "Ação prática para sustentar e expandir intenções.",
+    benefits: [
+      "Disciplina",
+      "Execução de objetivos",
+      "Autoconfiança"
+    ],
+    importance: "A ação é o elo entre intenção e manifestação.",
+    price: "R$ 21"
+  },
+  {
+    id: 7,
+    date: "29 de Abril",
+    title: "Ritual de Clareza e Propósito",
+    phase: "Energia Espiritual",
+    spiritual: "Santa Catarina de Sena",
+    description: "Alinhamento com propósito e tomada de decisões.",
+    benefits: ["Clareza mental", "Direcionamento", "Conexão espiritual"],
+    importance: "Fecha o ciclo com consciência e alinhamento.",
+    price: "R$ 21"
+  }
+];
+
+type Page = 'home' | 'diagnostico_info' | 'reprogramacao_pessoal_info' | 'clube_clarear_info' | 'clube_taro_info' | 'rituais_mes_info' | 'reprogramar_eu_info' | 'diagnostico_quiz_intro' | 'intro' | 'quiz' | 'analysis' | 'final' | 'auth' | 'checkout' | 'clube_clarear_content' | 'clube_taro_content' | 'admin_dashboard' | 'dashboard' | 'mapeamento_intro' | 'mapeamento_form' | 'mapeamento_analysis' | 'mapeamento_result' | 'jornada_emocional' | 'confirmation' | 'reprogramacao_form' | 'triage_quiz' | 'triage_result';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -1001,6 +1096,7 @@ const Diagnostico = () => {
                       { id: 'mapeamento_intro', title: 'Mapeamento Emocional Floral', desc: 'Descubra sua emoção dominante, seu arquétipo ativo e sua fórmula floral personalizada.', tag: 'Mapeamento' },
                       { id: 'clube_taro_info', title: 'Clube do Tarô', desc: 'Orientação semanal e leitura energética mensal para manter o fluxo constante.', tag: 'Comunidade' },
                       { id: 'clube_clarear_info', title: 'Clube Clarear', desc: 'Práticas semanais focadas em clareza mental e estabilidade emocional profunda.', tag: 'Prática' },
+                      { id: 'rituais_mes_info', title: 'Rituais do Mês', desc: 'Rituais coletivos realizados off-line e enviados por mensagem vídeo e áudio.', tag: 'Agenda' },
                       { id: 'reprogramacao_pessoal_info', title: 'Reprogramação Pessoal', desc: 'Áudio de frequência personalizada para alinhar sua base interna através de uma sessão individual.', tag: 'Atendimento Único' },
                       { id: 'diagnostico_info', title: 'Diagnóstico POSIÇÃO', desc: 'Mapeie sua frequência atual e descubra o caminho exato para o seu alinhamento.', tag: 'Mapeamento' }
                     ].map((item) => (
@@ -1752,6 +1848,90 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                     </button>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          )}
+
+          {page === 'rituais_mes_info' && (
+            <motion.div 
+              key="rituais_mes_info"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="animate-screen text-left max-w-2xl mx-auto"
+            >
+              <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <div className="glass-card border-gold-main/20 bg-gold-main/[0.01] mb-12">
+                <div className="flex justify-between items-center mb-8">
+                  <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Agenda Mensal</span>
+                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span>Teste</span>
+                  </div>
+                </div>
+                <h2 className="serif text-5xl text-gold-light mb-6">Rituais do Mês</h2>
+                <p className="text-white/40 mb-8 leading-relaxed text-lg font-light">
+                  Rituais coletivos, realizados off-line e enviados por mensagem vídeo e áudio para sua prática individual. Escolha abaixo o ritual que deseja participar:
+                </p>
+              </div>
+
+              <div className="grid gap-6">
+                {rituais_mes.map((ritual) => (
+                  <motion.div 
+                    key={ritual.id}
+                    whileHover={{ y: -5 }}
+                    className="glass-card p-8 border-gold-main/10 bg-white/[0.02] group"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-gold-main/40 text-[10px] uppercase tracking-widest block">{ritual.date}</span>
+                          <span className="text-gold-main/20 text-[10px] uppercase tracking-widest block">•</span>
+                          <span className="text-gold-main/60 text-[10px] uppercase tracking-widest block font-bold">{ritual.phase}</span>
+                          {ritual.spiritual && (
+                            <>
+                              <span className="text-gold-main/20 text-[10px] uppercase tracking-widest block">•</span>
+                              <span className="text-gold-main/80 text-[10px] uppercase tracking-widest block font-bold italic">{ritual.spiritual}</span>
+                            </>
+                          )}
+                        </div>
+                        <h3 className="serif text-2xl text-gold-light group-hover:text-gold-main transition-colors">{ritual.title}</h3>
+                      </div>
+                      <div className="text-gold-main font-medium">{ritual.price}</div>
+                    </div>
+                    <p className="text-white/40 text-sm font-light mb-6 leading-relaxed">
+                      {ritual.description}
+                    </p>
+                    
+                    <div className="mb-6">
+                      <p className="text-gold-main/30 text-[9px] uppercase tracking-widest mb-3 font-bold">Importância</p>
+                      <p className="text-white/30 text-xs italic font-light leading-relaxed">
+                        "{ritual.importance}"
+                      </p>
+                    </div>
+
+                    <div className="mb-8">
+                      <p className="text-gold-main/30 text-[9px] uppercase tracking-widest mb-3 font-bold">Benefícios</p>
+                      <div className="flex flex-wrap gap-2">
+                        {ritual.benefits.map((benefit, idx) => (
+                          <span key={idx} className="text-[9px] text-white/40 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+                            {benefit}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        setSelectedProduct({ name: `Ritual: ${ritual.title}`, price: ritual.price });
+                        showPage('checkout');
+                      }}
+                      className="button-outline w-full py-4 text-xs tracking-[0.2em]"
+                    >
+                      Participar deste Ritual
+                    </button>
+                  </motion.div>
+                ))}
               </div>
             </motion.div>
           )}
@@ -2825,8 +3005,8 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                 </div>
               </div>
 
-              <div className="glass-card p-6 md:p-12 border-gold-main/10">
-                <h3 className="serif text-3xl text-gold-light mb-10 leading-snug">
+              <div className="glass-card p-5 md:p-12 border-gold-main/10">
+                <h3 className="serif text-2xl md:text-3xl text-gold-light mb-10 leading-snug">
                   {triageQuestions[triageIndex].q}
                 </h3>
                 <div className="grid gap-4">
@@ -2836,7 +3016,7 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                       whileHover={{ x: 10, backgroundColor: "rgba(197, 160, 40, 0.05)" }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleTriageAnswer(idx)}
-                      className="p-6 rounded-3xl border border-white/5 bg-white/[0.02] transition-colors cursor-pointer text-white/60 font-light text-sm"
+                      className="p-4 md:p-6 rounded-3xl border border-white/5 bg-white/[0.02] transition-colors cursor-pointer text-white/60 font-light text-sm"
                     >
                       {texto}
                     </motion.div>
@@ -2854,10 +3034,10 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               exit={{ opacity: 0, y: -20 }}
               className="animate-screen text-center max-w-2xl mx-auto"
             >
-              <div className="glass-card p-6 md:p-12 border-gold-main/20 bg-gold-main/[0.01]">
+              <div className="glass-card p-5 md:p-12 border-gold-main/20 bg-gold-main/[0.01]">
                 <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.5em] block font-bold mb-6">Resultado do seu Momento</span>
-                <h2 className="serif text-5xl text-gold-light mb-8">{triageResult.title}</h2>
-                <p className="text-white/40 font-light leading-relaxed mb-12 text-lg">
+                <h2 className="serif text-4xl md:text-5xl text-gold-light mb-8">{triageResult.title}</h2>
+                <p className="text-white/40 font-light leading-relaxed mb-12 text-base md:text-lg">
                   {triageResult.text}
                 </p>
                 <div className="flex flex-col gap-4">
@@ -2976,8 +3156,8 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                 </div>
               </div>
 
-              <div className="glass-card p-6 md:p-12 border-gold-main/10">
-                <h3 className="serif text-3xl text-gold-light mb-10 leading-snug">
+              <div className="glass-card p-5 md:p-12 border-gold-main/10">
+                <h3 className="serif text-2xl md:text-3xl text-gold-light mb-10 leading-snug">
                   {questions[currentIndex].question}
                 </h3>
                 <div className="grid gap-4">
@@ -2987,7 +3167,7 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                       whileHover={{ x: 10, backgroundColor: "rgba(197, 160, 40, 0.05)" }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleAnswer(opt.value)}
-                      className="p-6 rounded-3xl border border-white/5 bg-white/[0.02] transition-colors cursor-pointer text-white/60 font-light text-sm"
+                      className="p-4 md:p-6 rounded-3xl border border-white/5 bg-white/[0.02] transition-colors cursor-pointer text-white/60 font-light text-sm"
                     >
                       {opt.text}
                     </motion.div>

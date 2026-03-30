@@ -1,6 +1,6 @@
 export const triageQuestions = [
   {
-    q: "Nos últimos dias você tem se sentido mais:",
+    q: "Nos últimos dias, como você tem se sentido com mais frequência?",
     a: [
       "Confusa e dispersa",
       "Sobrecarregada emocionalmente",
@@ -9,7 +9,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "O que mais tem te incomodado atualmente:",
+    q: "O que é que mais tem incomodado você atualmente?",
     a: [
       "Falta de clareza",
       "Cansaço emocional",
@@ -18,7 +18,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Quando algo não sai como esperado você:",
+    q: "Quando algo não sai como você esperava, qual sua reação?",
     a: [
       "Tenta entender mentalmente",
       "Se sente afetada emocionalmente",
@@ -27,7 +27,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Você sente que está:",
+    q: "Neste momento, você sente que está:",
     a: [
       "Perdida",
       "Sobrecarregada",
@@ -36,7 +36,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Suas decisões hoje são mais:",
+    q: "Como você descreveria suas decisões hoje?",
     a: [
       "Confusas",
       "Impulsivas",
@@ -45,7 +45,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Quando precisa decidir você:",
+    q: "Quando você precisa tomar uma decisão, o que acontece?",
     a: [
       "Procrastina",
       "Age e depois repensa",
@@ -54,7 +54,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Você sente que seu maior desafio hoje é:",
+    q: "Qual você sente que é seu maior desafio hoje?",
     a: [
       "Mental",
       "Emocional",
@@ -63,7 +63,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Você gostaria de:",
+    q: "O que você mais gostaria de alcançar agora?",
     a: [
       "Clarear a mente",
       "Se sentir mais leve",
@@ -72,7 +72,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Seu padrão mais repetido hoje é:",
+    q: "Qual é o seu padrão mais repetido no momento?",
     a: [
       "Confusão",
       "Sobrecarga",
@@ -81,7 +81,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Você sente dificuldade em:",
+    q: "Em qual área você sente mais dificuldade hoje?",
     a: [
       "Entender o que está acontecendo",
       "Lidar com emoções",
@@ -90,7 +90,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Quando pensa no futuro você sente:",
+    q: "Quando você pensa no futuro, qual sentimento predomina?",
     a: [
       "Dúvida",
       "Ansiedade",
@@ -99,7 +99,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Hoje você está mais:",
+    q: "Como você se sente em relação ao seu estado atual?",
     a: [
       "Mentalmente cansada",
       "Emocionalmente sobrecarregada",
@@ -108,7 +108,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "O que você mais precisa agora:",
+    q: "O que você sente que mais precisa neste exato momento?",
     a: [
       "Clareza",
       "Alívio",
@@ -117,7 +117,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Você sente que está:",
+    q: "Em relação ao seu dia a dia, você sente que está:",
     a: [
       "Pensando demais",
       "Sentindo demais",
@@ -126,7 +126,7 @@ export const triageQuestions = [
     ]
   },
   {
-    q: "Se pudesse resolver algo hoje seria:",
+    q: "Se você pudesse resolver algo hoje, o que seria?",
     a: [
       "Entender melhor sua situação",
       "Se sentir mais leve",

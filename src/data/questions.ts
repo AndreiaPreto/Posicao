@@ -12,7 +12,7 @@ export interface Question {
 export const questions: Question[] = [
   {
     id: 1,
-    question: "Quando algo sai do controle você:",
+    question: "Quando algo sai do controle, qual costuma ser sua reação imediata?",
     options: [
       { text: "Organiza rapidamente", value: "A" },
       { text: "Assume responsabilidade", value: "B" },
@@ -22,7 +22,7 @@ export const questions: Question[] = [
   },
   {
     id: 2,
-    question: "No corpo você sente tensão em:",
+    question: "Em qual parte do seu corpo você mais sente tensão no dia a dia?",
     options: [
       { text: "Mandíbula", value: "A" },
       { text: "Ombros", value: "B" },
@@ -32,7 +32,7 @@ export const questions: Question[] = [
   },
   {
     id: 3,
-    question: "Quando o dinheiro entra você:",
+    question: "Qual sua atitude principal quando o dinheiro entra na sua conta?",
     options: [
       { text: "Controla", value: "A" },
       { text: "Assume mais", value: "B" },
@@ -42,7 +42,7 @@ export const questions: Question[] = [
   },
   {
     id: 4,
-    question: "Quando o dinheiro aperta:",
+    question: "Como você se comporta quando a situação financeira aperta?",
     options: [
       { text: "Controla mais", value: "A" },
       { text: "Trabalha mais", value: "B" },
