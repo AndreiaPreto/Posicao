@@ -9,8 +9,8 @@ const AssinaturaClube = () => {
   const navigate = useNavigate();
 
   const handleSubscribe = () => {
-    simulatePurchase('clube');
-    navigate('/membros');
+    // Redirect to main page with buy parameter to trigger checkout
+    navigate('/diagnostico?buy=clube');
   };
 
   return (

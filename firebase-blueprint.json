@@ -66,6 +66,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "productName", "estadoEmocional", "objetivo", "status", "createdAt"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupons for services",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "The coupon code (e.g., POSICAO10)" },
+        "discountType": { "type": "string", "enum": ["percentage", "fixed"], "description": "Type of discount" },
+        "value": { "type": "number", "description": "Discount value (percentage or amount in BRL)" },
+        "active": { "type": "boolean", "description": "Whether the coupon is active" },
+        "expiryDate": { "type": "string", "format": "date-time", "description": "Optional expiry date" }
+      },
+      "required": ["code", "discountType", "value", "active"]
     }
   },
   "firestore": {
@@ -84,6 +97,10 @@
     "/reprogramacao_requests/{requestId}": {
       "schema": "ReprogramacaoRequest",
       "description": "Requests for personal frequency audio"
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Discount coupons"
     }
   }
 }

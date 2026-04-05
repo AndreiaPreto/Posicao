@@ -12,7 +12,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-         request.auth.token.email == "andreiapreto@gmail.com");
+         (request.auth.token.email == "andreiapreto@gmail.com" && request.auth.token.email_verified == true));
     }
     
     function isOwner(userId) {
@@ -64,7 +64,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
                     (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
       allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
@@ -73,24 +74,32 @@ service cloud.firestore {
     }
 
     match /diagnosticos/{diagId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated() && (isAdmin() || (request.query.limit <= 100 && request.query.filters.userId == request.auth.uid));
       allow create: if isAuthenticated() && isValidDiagnostico(request.resource.data) && 
                     (request.resource.data.userId == request.auth.uid || isAdmin());
       allow update, delete: if isAdmin();
     }
 
     match /mappings/{mappingId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated() && (isAdmin() || (request.query.limit <= 100 && request.query.filters.userId == request.auth.uid));
       allow create: if isAuthenticated() && isValidMapping(request.resource.data) && 
                     (request.resource.data.userId == request.auth.uid || isAdmin());
       allow update, delete: if isAdmin();
     }
 
     match /reprogramacao_requests/{requestId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated() && (isAdmin() || (request.query.limit <= 100 && request.query.filters.userId == request.auth.uid));
       allow create: if isAuthenticated() && isValidReprogramacaoRequest(request.resource.data) && 
                     (request.resource.data.userId == request.auth.uid || isAdmin());
       allow update, delete: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true; // Allow anyone to check coupon validity
+      allow write: if isAdmin();
     }
   }
 }

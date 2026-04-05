@@ -9,10 +9,8 @@ const CompraDiagnostico = () => {
   const navigate = useNavigate();
 
   const handlePurchase = () => {
-    // In a real app, this would redirect to Stripe
-    // For demo, we simulate the purchase
-    simulatePurchase('diagnostico');
-    navigate('/diagnostico');
+    // Redirect to main page with buy parameter to trigger checkout
+    navigate('/diagnostico?buy=diagnostico');
   };
 
   return (
@@ -27,7 +25,7 @@ const CompraDiagnostico = () => {
       <div className="card space-y-6">
         <div className="flex items-center justify-between border-b border-gold-main/20 pb-4">
           <span className="text-gold-light font-medium">Diagnóstico POSIÇÃO</span>
-          <span className="text-2xl font-bold text-gold-main">R$ 97,00</span>
+          <span className="text-2xl font-bold text-gold-main">R$ 69,00</span>
         </div>
 
         <ul className="space-y-3 text-sm text-text-main/70">

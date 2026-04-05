@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { ARCANOS_MATRIZ, ArcanoData } from '../constants/arcanos';
 import { questions } from '../data/questions';
 import { triageQuestions } from '../data/triageQuestions';
+import { mapeamentoQuestions } from '../data/mapeamentoQuestions';
 import { auth, db } from '../services/firebase';
 import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
@@ -12,11 +14,13 @@ import {
   createUserWithEmailAndPassword, 
   onAuthStateChanged, 
   signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useAccess } from '../context/AccessContext';
-import { LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight, Tag, X, Check } from 'lucide-react';
 
 interface AppUser {
   id: string;
@@ -222,6 +226,745 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 };
 
+const AdminDashboardTab = ({ stats, users, onTestMapeamento, onSimulatePurchase }: { stats: any, users: any[], onTestMapeamento: () => void, onSimulatePurchase: () => void }) => (
+  <div className="space-y-12">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      {[
+        { label: 'Total Usuários', value: stats.usersCount, icon: Users },
+        { label: 'Mapeamentos', value: stats.mappingsCount, icon: BarChart3 },
+        { label: 'Solicitações', value: stats.requestsCount, icon: MessageCircle },
+        { label: 'Receita Est.', value: `R$ ${stats.revenue}`, icon: Package },
+        { label: 'Usuários Ativos', value: stats.activeUsers, icon: ShieldCheck },
+      ].map((stat, i) => (
+        <div key={i} className="glass-card p-6 md:p-8 border-gold-main/10">
+          <stat.icon size={20} className="text-gold-main/30 mb-6" />
+          <p className="text-[10px] uppercase tracking-widest text-white/20 mb-2">{stat.label}</p>
+          <p className="serif text-2xl md:text-3xl text-gold-light">{stat.value}</p>
+        </div>
+      ))}
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="glass-card p-6 md:p-10">
+        <h3 className="serif text-2xl text-gold-light mb-8">Atividade Recente</h3>
+        <div className="space-y-4">
+          {users.slice(0, 5).map((u, i) => (
+            <div key={i} className="flex items-center justify-between p-4 border-b border-white/5 last:border-0">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gold-main/40">
+                  <UserIcon size={18} />
+                </div>
+                <div>
+                  <p className="text-gold-light text-sm font-medium truncate max-w-[150px] md:max-w-none">{u.email}</p>
+                  <p className="text-[10px] text-white/20 uppercase tracking-widest">Novo Usuário</p>
+                </div>
+              </div>
+              <span className="text-[10px] text-white/20">Recente</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card p-6 md:p-10 border-emerald-500/20 bg-emerald-500/[0.02]">
+        <h3 className="serif text-2xl text-emerald-400 mb-8 flex items-center gap-3">
+          <ShieldCheck size={24} />
+          Modo de Teste (Admin)
+        </h3>
+        <p className="text-white/40 text-sm mb-8 font-light">
+          Use estas ferramentas para testar as funcionalidades do app sem precisar realizar pagamentos reais.
+        </p>
+        <div className="grid grid-cols-1 gap-4">
+          <button 
+            onClick={onTestMapeamento}
+            className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+          >
+            <div className="text-left">
+              <p className="text-gold-light text-sm font-medium">Testar Mapeamento</p>
+              <p className="text-[10px] text-white/20 uppercase tracking-widest">Acesso direto ao Quiz de 10 perguntas</p>
+            </div>
+            <ArrowRight size={18} className="text-gold-main/40 group-hover:text-gold-main transition-colors" />
+          </button>
+
+          <button 
+            onClick={onSimulatePurchase}
+            className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+          >
+            <div className="text-left">
+              <p className="text-gold-light text-sm font-medium">Simular Compra de Diagnóstico</p>
+              <p className="text-[10px] text-white/20 uppercase tracking-widest">Libera acesso ao Diagnóstico Posição</p>
+            </div>
+            <ArrowRight size={18} className="text-gold-main/40 group-hover:text-gold-main transition-colors" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const AdminUserDetailsView = ({ user, mappings, diagnosticos, requests, onBack }: { user: any, mappings: any[], diagnosticos: any[], requests: any[], onBack: () => void }) => {
+  const userMappings = mappings.filter(m => m.userId === user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const userDiagnosticos = diagnosticos.filter(d => d.userId === user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const userRequests = requests.filter(r => r.userId === user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Combine and sort all activities for a timeline
+  const timeline = [
+    ...userMappings.map(m => ({ ...m, type: 'mapping' })),
+    ...userDiagnosticos.map(d => ({ ...d, type: 'diagnostico' })),
+    ...userRequests.map(r => ({ ...r, type: 'request' }))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="space-y-8">
+      <button onClick={onBack} className="text-gold-main/40 hover:text-gold-main transition-colors text-[10px] uppercase tracking-widest font-bold flex items-center gap-2">
+        <ChevronRight size={14} className="rotate-180" />
+        Voltar para Lista
+      </button>
+
+      <div className="glass-card p-8 md:p-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+          <div>
+            <span className="text-gold-main/30 text-[9px] uppercase tracking-[0.3em] mb-2 block font-bold">Perfil do Usuário</span>
+            <h3 className="serif text-3xl text-gold-light">{user.email}</h3>
+            <p className="text-white/20 text-[10px] mt-1">ID: {user.id}</p>
+          </div>
+          <div className="flex gap-4">
+            <div className="text-right">
+              <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold mb-1">Status</p>
+              <span className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold ${user.paidStatus ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
+                {user.paidStatus ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+            <div className="text-right">
+              <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold mb-1">Mapeamentos</p>
+              <span className="text-gold-light font-medium">{userMappings.length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6">
+            <h4 className="serif text-xl text-gold-light mb-6 flex items-center gap-3">
+              <History size={20} className="text-gold-main/40" />
+              Jornada de Evolução
+            </h4>
+            
+            <div className="relative pl-8 border-l border-white/5 space-y-12">
+              {timeline.map((item, i) => (
+                <div key={i} className="relative">
+                  <div className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-black border-2 border-gold-main/40" />
+                  
+                  <div className="glass-card p-6 border-gold-main/5 hover:border-gold-main/20 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded ${item.type === 'mapping' ? 'bg-gold-main/10 text-gold-main' : item.type === 'diagnostico' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                        {item.type === 'mapping' ? 'Mapeamento' : item.type === 'diagnostico' ? 'Diagnóstico' : 'Solicitação'}
+                      </span>
+                      <span className="text-white/20 text-[10px]">{new Date(item.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                    </div>
+
+                    {item.type === 'mapping' ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Emoção Central</p>
+                            <p className="text-gold-light text-sm">{item.emocao}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Arquétipo</p>
+                            <p className="text-gold-light text-sm">{item.arquetipo}</p>
+                          </div>
+                        </div>
+
+                        {item.answers && (
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3">
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-2">Respostas do Quiz (Mapeamento)</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {item.answers.map((ans: any, aidx: number) => (
+                                <div key={aidx} className="flex flex-col gap-1">
+                                  <span className="text-[8px] text-white/10 uppercase tracking-widest">P{ans.pergunta_id}</span>
+                                  <span className="text-[11px] text-white/40 leading-tight">{ans.emocao} (Peso: {ans.peso})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Florais Recomendados</p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {item.florais?.split(',').map((f: string, fi: number) => (
+                              <span key={fi} className="text-[10px] bg-white/5 px-2 py-1 rounded border border-white/5 text-white/60">{f.trim()}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {item.alignmentScore && (
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-2">Nível de Alinhamento: {item.alignmentScore}%</p>
+                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-gold-main" style={{ width: `${item.alignmentScore}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : item.type === 'diagnostico' ? (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Arquétipo (Arcano)</p>
+                            <p className="text-gold-light text-sm">{item.archetype}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Temática</p>
+                            <p className="text-gold-light text-sm">{item.theme}</p>
+                          </div>
+                        </div>
+
+                        {item.arcanoData && (
+                          <div className="space-y-4 pt-4 border-t border-white/5">
+                            <div>
+                              <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-2">Sombra Ativa</p>
+                              <p className="text-white/60 text-xs capitalize">{item.arcanoData.sombra.join(', ').replace(/_/g, ' ')}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-2">Direção de Evolução</p>
+                              <p className="text-gold-light/80 text-xs italic">"{item.arcanoData.direcao}"</p>
+                            </div>
+                            <div>
+                              <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-2">Caminhos Possíveis</p>
+                              <div className="flex flex-wrap gap-2">
+                                {item.arcanoData.evolucao.map((ev: string, idx: number) => (
+                                  <span key={idx} className="text-[8px] uppercase tracking-widest bg-gold-main/5 border border-gold-main/10 px-2 py-0.5 rounded text-gold-main/60">{ev}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {item.answers && (
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-3">Respostas do Quiz (Diagnóstico)</p>
+                            <div className="space-y-2">
+                              {item.answers.map((ans: string, idx: number) => (
+                                <div key={idx} className="text-[10px] text-white/40 flex gap-2">
+                                  <span className="text-gold-main/30">Q{idx + 1}:</span>
+                                  <span>Opção {ans}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Objetivo</p>
+                          <p className="text-gold-light text-sm italic">"{item.objetivo}"</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Estado Emocional</p>
+                            <p className="text-white/60 text-xs">{item.estadoEmocional}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Status</p>
+                            <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">{item.status}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {timeline.length === 0 && (
+                <div className="text-center py-10 text-white/20 italic">
+                  Nenhuma atividade registrada para este usuário ainda.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="glass-card p-6 border-white/5">
+              <h5 className="serif text-lg text-gold-light mb-6">Resumo de Dados</h5>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">WhatsApp</p>
+                  <p className="text-white/60 text-sm">{user.whatsapp || 'Não informado'}</p>
+                </div>
+                <div>
+                  <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Nome</p>
+                  <p className="text-white/60 text-sm">{user.name || 'Não informado'}</p>
+                </div>
+                <div>
+                  <p className="text-white/20 text-[9px] uppercase tracking-widest font-bold mb-1">Cargo/Papel</p>
+                  <p className="text-white/60 text-sm capitalize">{user.role || 'Usuário'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card p-6 border-white/5 bg-gold-main/[0.02]">
+              <h5 className="serif text-lg text-gold-light mb-4">Ações Rápidas</h5>
+              <div className="space-y-3">
+                <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all text-left px-4 flex items-center justify-between">
+                  Enviar Mensagem
+                  <MessageCircle size={14} className="text-gold-main/40" />
+                </button>
+                <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all text-left px-4 flex items-center justify-between">
+                  Redefinir Acesso
+                  <ShieldCheck size={14} className="text-gold-main/40" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AdminUsersTab = ({ users, mappings, onSelectUser }: { users: any[], mappings: any[], onSelectUser: (user: any) => void }) => (
+  <div className="glass-card p-6 md:p-10">
+    <div className="flex justify-between items-center mb-10">
+      <h3 className="serif text-2xl text-gold-light">Gestão de Usuários</h3>
+      <div className="flex gap-4">
+        <input type="text" placeholder="Buscar usuário..." className="input py-2 px-4 text-xs" />
+      </div>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-white/20">
+            <th className="pb-6 font-bold">Usuário</th>
+            <th className="pb-6 font-bold">Status</th>
+            <th className="pb-6 font-bold">Mapeamentos</th>
+            <th className="pb-6 font-bold text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody className="text-sm">
+          {users.map((u, i) => (
+            <tr key={i} className="border-b border-white/5 last:border-0">
+              <td className="py-6">
+                <p className="text-gold-light font-medium">{u.email}</p>
+                <p className="text-[10px] text-white/20">{u.id}</p>
+              </td>
+              <td className="py-6">
+                <span className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold ${u.paidStatus ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
+                  {u.paidStatus ? 'Ativo' : 'Inativo'}
+                </span>
+              </td>
+              <td className="py-6 text-white/40">
+                {mappings.filter(m => m.userId === u.id).length}
+              </td>
+              <td className="py-6 text-right">
+                <button 
+                  onClick={() => onSelectUser(u)}
+                  className="text-gold-main/40 hover:text-gold-main transition-colors text-[10px] uppercase tracking-widest font-bold"
+                >
+                  Ver Detalhes
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const AdminMappingsTab = ({ mappings }: { mappings: any[] }) => (
+  <div className="glass-card p-6 md:p-10">
+    <h3 className="serif text-2xl text-gold-light mb-10">Histórico de Mapeamentos</h3>
+    <div className="space-y-4">
+      {mappings.map((m, i) => (
+        <div key={i} className="p-6 border border-white/5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-gold-main/20 transition-all">
+          <div className="flex items-center gap-6">
+            <div className="w-12 h-12 rounded-full bg-gold-main/5 flex items-center justify-center text-gold-main/40">
+              <BarChart3 size={20} />
+            </div>
+            <div>
+              <h4 className="serif text-lg text-gold-light">{m.arquetipo}</h4>
+              <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">
+                {m.userEmail} • {new Date(m.createdAt).toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          </div>
+          <button className="p-3 text-gold-main/20 hover:text-gold-main transition-colors self-end sm:self-auto">
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const AdminClubeTab = ({ 
+  meditationData, 
+  setMeditationData, 
+  meditationList, 
+  setMeditationList 
+}: { 
+  meditationData: any, 
+  setMeditationData: (data: any) => void, 
+  meditationList: any[], 
+  setMeditationList: (list: any[]) => void 
+}) => (
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+    <div className="lg:col-span-1">
+      <div className="glass-card p-8">
+        <h3 className="serif text-2xl text-gold-light mb-8 flex items-center gap-3">
+          <Plus size={20} className="text-gold-main" />
+          Novo Áudio
+        </h3>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">Título</label>
+            <input 
+              type="text" 
+              className="input"
+              value={meditationData.title}
+              onChange={(e) => setMeditationData({...meditationData, title: e.target.value})}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">Duração</label>
+            <input 
+              type="text" 
+              className="input"
+              value={meditationData.duration}
+              onChange={(e) => setMeditationData({...meditationData, duration: e.target.value})}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">URL MP3</label>
+            <input 
+              type="text" 
+              className="input"
+              value={meditationData.url}
+              onChange={(e) => setMeditationData({...meditationData, url: e.target.value})}
+            />
+          </div>
+          <button 
+            onClick={() => {
+              if (meditationData.title && meditationData.url) {
+                const newItem = { id: meditationList.length + 1, ...meditationData };
+                setMeditationList([...meditationList, newItem]);
+                setMeditationData({ title: '', description: '', duration: '', url: '' });
+              }
+            }}
+            className="button w-full flex items-center justify-center gap-3"
+          >
+            <Upload size={18} />
+            Publicar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div className="lg:col-span-2">
+      <div className="glass-card p-8">
+        <h3 className="serif text-2xl text-gold-light mb-8">Conteúdo Ativo</h3>
+        <div className="space-y-4">
+          {meditationList.map((item) => (
+            <div key={item.id} className="p-6 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-gold-main/30 transition-all">
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-full bg-gold-main/5 flex items-center justify-center text-gold-main/40">
+                  <Music size={20} />
+                </div>
+                <div>
+                  <h4 className="serif text-lg text-gold-light">{item.title}</h4>
+                  <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">{item.duration} • Clube Clarear</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setMeditationList(meditationList.filter(m => m.id !== item.id))}
+                className="p-3 text-white/10 hover:text-red-400/60 transition-colors"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const AdminRequestsTab = ({ requests, users }: { requests: any[], users: any[] }) => (
+  <div className="glass-card p-6 md:p-10">
+    <h3 className="serif text-2xl text-gold-light mb-10">Solicitações de Reprogramação</h3>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-white/20">
+            <th className="pb-6 font-bold">Usuário</th>
+            <th className="pb-6 font-bold">Produto</th>
+            <th className="pb-6 font-bold">Objetivo</th>
+            <th className="pb-6 font-bold">Status</th>
+            <th className="pb-6 font-bold text-right">Data</th>
+          </tr>
+        </thead>
+        <tbody className="text-sm">
+          {requests.map((r, i) => (
+            <tr key={i} className="border-b border-white/5 last:border-0">
+              <td className="py-6">
+                <p className="text-gold-light font-medium">{users.find(u => u.id === r.userId)?.email || r.userId}</p>
+              </td>
+              <td className="py-6 text-white/40">{r.productName}</td>
+              <td className="py-6 text-white/40 max-w-xs truncate">{r.objetivo}</td>
+              <td className="py-6">
+                <span className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold ${r.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-gold-main/10 text-gold-main'}`}>
+                  {r.status === 'completed' ? 'Concluído' : 'Pendente'}
+                </span>
+              </td>
+              <td className="py-6 text-right text-white/20">
+                {new Date(r.createdAt).toLocaleDateString('pt-BR')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const AdminProductsTab = () => (
+  <div className="glass-card p-6 md:p-10">
+    <div className="flex justify-between items-center mb-10">
+      <h3 className="serif text-2xl text-gold-light">Produtos e Ofertas</h3>
+      <button className="button-outline py-2 px-4 text-xs flex items-center gap-2">
+        <Plus size={14} /> Novo Produto
+      </button>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[
+        { name: 'Diagnóstico POSIÇÃO', price: 'R$ 69', sales: 124, status: 'Ativo' },
+        { name: 'Mapeamento Floral', price: 'R$ 9', sales: 452, status: 'Ativo' },
+        { name: 'Clube Clarear', price: 'R$ 47/mês', sales: 89, status: 'Ativo' },
+        { name: 'Clube do Tarô', price: 'R$ 27/mês', sales: 156, status: 'Ativo' },
+        { name: 'Reprogramação Pessoal', price: 'R$ 197', sales: 42, status: 'Ativo' },
+        { name: 'Reprograme-se', price: 'R$ 497', sales: 15, status: 'Ativo' },
+      ].map((p, i) => (
+        <div key={i} className="p-6 border border-white/5 rounded-2xl bg-white/[0.01] hover:border-gold-main/20 transition-all group">
+          <div className="flex justify-between items-start mb-6">
+            <h4 className="serif text-lg text-gold-light group-hover:text-gold-main transition-colors">{p.name}</h4>
+            <span className="text-emerald-400 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">{p.status}</span>
+          </div>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-white/20 text-[10px] uppercase tracking-widest mb-1">Preço</p>
+              <p className="text-gold-light font-medium">{p.price}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-white/20 text-[10px] uppercase tracking-widest mb-1">Vendas</p>
+              <p className="text-gold-light font-medium">{p.sales}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const AdminSessionsTab = () => (
+  <div className="glass-card p-6 md:p-10">
+    <h3 className="serif text-2xl text-gold-light mb-10">Agenda de Sessões</h3>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 p-6 border border-white/5 rounded-2xl bg-white/[0.01]">
+        <div className="w-12 h-12 rounded-full bg-gold-main/5 flex items-center justify-center text-gold-main/40">
+          <Calendar size={20} />
+        </div>
+        <div className="flex-1">
+          <h4 className="serif text-lg text-gold-light">Próximas Sessões Individuais</h4>
+          <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">Sincronizado com Google Calendar</p>
+        </div>
+        <button className="button-outline py-2 px-4 text-xs">Ver Agenda Completa</button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {[
+          { user: 'ana.silva@email.com', time: '14:30', date: 'Hoje', type: 'Reprogramação' },
+          { user: 'marcos.oliveira@email.com', time: '16:00', date: 'Hoje', type: 'Diagnóstico' },
+          { user: 'julia.costa@email.com', time: '09:00', date: 'Amanhã', type: 'Reprograme-se' },
+        ].map((s, i) => (
+          <div key={i} className="p-6 border border-white/5 rounded-2xl hover:border-gold-main/20 transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-gold-main/40 text-[9px] uppercase tracking-widest font-bold">{s.type}</span>
+              <span className="text-white/20 text-[10px]">{s.date} • {s.time}</span>
+            </div>
+            <p className="text-gold-light font-medium mb-4">{s.user}</p>
+            <div className="flex gap-3">
+              <button className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all">Reagendar</button>
+              <button className="flex-1 py-2 bg-gold-main/10 hover:bg-gold-main text-gold-main hover:text-black rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all">Iniciar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const AdminReportsTab = () => (
+  <div className="glass-card p-6 md:p-10">
+    <h3 className="serif text-2xl text-gold-light mb-10">Relatórios e Insights</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="p-8 border border-white/5 rounded-3xl bg-white/[0.01]">
+        <h4 className="serif text-xl text-gold-light mb-6">Crescimento de Usuários</h4>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={[
+              { name: 'Jan', value: 40 },
+              { name: 'Fev', value: 75 },
+              { name: 'Mar', value: 120 },
+              { name: 'Abr', value: 180 },
+            ]}>
+              <defs>
+                <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey="value" stroke="#D4AF37" fillOpacity={1} fill="url(#colorVal)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <div className="p-8 border border-white/5 rounded-3xl bg-white/[0.01]">
+        <h4 className="serif text-xl text-gold-light mb-6">Conversão de Ofertas</h4>
+        <div className="space-y-6">
+          {[
+            { label: 'Diagnóstico', value: 85 },
+            { label: 'Mapeamento', value: 92 },
+            { label: 'Clube', value: 45 },
+          ].map((item, i) => (
+            <div key={i}>
+              <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold mb-2">
+                <span className="text-white/40">{item.label}</span>
+                <span className="text-gold-main">{item.value}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-gold-main/40" style={{ width: `${item.value}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const AdminCouponsTab = ({ coupons, onRefresh }: { coupons: any[], onRefresh: () => void }) => {
+  const [newCoupon, setNewCoupon] = useState({ code: '', discountType: 'percentage', value: 0 });
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreate = async () => {
+    if (!newCoupon.code || newCoupon.value <= 0) return;
+    setIsCreating(true);
+    try {
+      await setDoc(doc(collection(db, 'coupons')), {
+        ...newCoupon,
+        code: newCoupon.code.toUpperCase(),
+        active: true,
+        createdAt: new Date().toISOString()
+      });
+      setNewCoupon({ code: '', discountType: 'percentage', value: 0 });
+      onRefresh();
+    } catch (error) {
+      console.error("Error creating coupon:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const toggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await setDoc(doc(db, 'coupons', id), { active: !currentStatus }, { merge: true });
+      onRefresh();
+    } catch (error) {
+      console.error("Error toggling coupon status:", error);
+    }
+  };
+
+  return (
+    <div className="glass-card p-6 md:p-10">
+      <h3 className="serif text-2xl text-gold-light mb-10">Gerenciar Cupons</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12 p-6 border border-white/5 rounded-2xl bg-white/[0.01]">
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Código</label>
+          <input 
+            type="text" 
+            placeholder="EX: POSICAO10" 
+            className="input py-2 text-xs"
+            value={newCoupon.code}
+            onChange={(e) => setNewCoupon({...newCoupon, code: e.target.value})}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Tipo</label>
+          <select 
+            className="input py-2 text-xs"
+            value={newCoupon.discountType}
+            onChange={(e) => setNewCoupon({...newCoupon, discountType: e.target.value})}
+          >
+            <option value="percentage">Porcentagem (%)</option>
+            <option value="fixed">Valor Fixo (R$)</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Valor</label>
+          <input 
+            type="number" 
+            placeholder="0" 
+            className="input py-2 text-xs"
+            value={newCoupon.value}
+            onChange={(e) => setNewCoupon({...newCoupon, value: parseFloat(e.target.value)})}
+          />
+        </div>
+        <div className="flex items-end">
+          <button 
+            onClick={handleCreate}
+            disabled={isCreating}
+            className="button w-full py-2.5 text-xs"
+          >
+            {isCreating ? 'Criando...' : 'Criar Cupom'}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {coupons.map((c, i) => (
+          <div key={i} className="p-6 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-gold-main/20 transition-all">
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 rounded-full bg-gold-main/5 flex items-center justify-center text-gold-main/40">
+                <Tag size={20} />
+              </div>
+              <div>
+                <h4 className="serif text-lg text-gold-light">{c.code}</h4>
+                <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">
+                  {c.discountType === 'percentage' ? `${c.value}% de desconto` : `R$ ${c.value} de desconto`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={`text-[9px] uppercase tracking-widest font-bold px-3 py-1 rounded-full ${c.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                {c.active ? 'Ativo' : 'Inativo'}
+              </span>
+              <button 
+                onClick={() => toggleStatus(c.id, c.active)}
+                className="p-3 text-gold-main/20 hover:text-gold-main transition-colors"
+              >
+                {c.active ? <X size={18} /> : <Check size={18} />}
+              </button>
+            </div>
+          </div>
+        ))}
+        {coupons.length === 0 && (
+          <p className="text-center text-white/20 italic py-10">Nenhum cupom cadastrado.</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
 const Diagnostico = () => {
   const { access, refreshAccess } = useAccess();
   const [page, setPage] = useState<Page>('home');
@@ -237,6 +980,39 @@ const Diagnostico = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [reprogramacaoData, setReprogramacaoData] = useState({ estadoEmocional: '', objetivo: '', observacoes: '' });
   const [isSubmittingReprogramacao, setIsSubmittingReprogramacao] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discountType: string, value: number} | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsApplyingCoupon(true);
+    setCouponError(null);
+    
+    try {
+      const q = query(collection(db, 'coupons'), where('code', '==', couponCode.trim().toUpperCase()), where('active', '==', true));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        setCouponError('Cupom inválido ou expirado.');
+        setAppliedCoupon(null);
+      } else {
+        const couponData = querySnapshot.docs[0].data() as any;
+        setAppliedCoupon({
+          code: couponData.code,
+          discountType: couponData.discountType,
+          value: couponData.value
+        });
+        setCouponError(null);
+      }
+    } catch (error) {
+      console.error("Error applying coupon:", error);
+      setCouponError('Erro ao validar cupom.');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
 
   const handleReprogramacaoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,10 +1038,24 @@ const Diagnostico = () => {
       setIsSubmittingReprogramacao(false);
     }
   };
+  const refreshAdminData = async () => {
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    setAdminUsers(usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppUser[]);
+    
+    const mappingsSnapshot = await getDocs(collection(db, 'mappings'));
+    setAdminMappings(mappingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    
+    const requestsSnapshot = await getDocs(collection(db, 'reprogramacao_requests'));
+    setAdminRequests(requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+    const couponsSnapshot = await getDocs(collection(db, 'coupons'));
+    setAdminCoupons(couponsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
+
   const [currentAudio, setCurrentAudio] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [adminMeditationData, setAdminMeditationData] = useState({ title: '', description: '', duration: '', url: '' });
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'users' | 'mappings' | 'products' | 'clube' | 'sessions' | 'reports' | 'requests'>('dashboard');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'users' | 'mappings' | 'products' | 'clube' | 'sessions' | 'reports' | 'requests' | 'coupons'>('dashboard');
   const [adminStats, setAdminStats] = useState({
     usersCount: 0,
     mappingsCount: 0,
@@ -275,7 +1065,10 @@ const Diagnostico = () => {
   });
   const [adminUsers, setAdminUsers] = useState<AppUser[]>([]);
   const [adminMappings, setAdminMappings] = useState<any[]>([]);
+  const [adminDiagnosticos, setAdminDiagnosticos] = useState<any[]>([]);
   const [adminRequests, setAdminRequests] = useState<any[]>([]);
+  const [adminCoupons, setAdminCoupons] = useState<any[]>([]);
+  const [selectedAdminUser, setSelectedAdminUser] = useState<any | null>(null);
   const [meditationList, setMeditationList] = useState(meditations);
   const [mapeamentoData, setMapeamentoData] = useState({
     emocao: '',
@@ -285,7 +1078,10 @@ const Diagnostico = () => {
     desejo: '',
     arquetipo: ''
   });
+  const [mapeamentoAnswers, setMapeamentoAnswers] = useState<any[]>([]);
+  const [currentMapeamentoStep, setCurrentMapeamentoStep] = useState(0);
   const [mapeamentoResult, setMapeamentoResult] = useState<string | null>(null);
+  const [selectedArcano, setSelectedArcano] = useState<ArcanoData | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [selectedMapping, setSelectedMapping] = useState<any | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -379,15 +1175,21 @@ const Diagnostico = () => {
         try {
           const usersSnapshot = await getDocs(collection(db, 'users'));
           const mappingsSnapshot = await getDocs(collection(db, 'mappings'));
+          const diagnosticosSnapshot = await getDocs(collection(db, 'diagnosticos'));
           const requestsSnapshot = await getDocs(collection(db, 'reprogramacao_requests'));
+          const couponsSnapshot = await getDocs(collection(db, 'coupons'));
           
           const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
           const mappings = mappingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const diagnosticos = diagnosticosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           const requests = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const coupons = couponsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           
           setAdminUsers(users);
           setAdminMappings(mappings);
+          setAdminDiagnosticos(diagnosticos);
           setAdminRequests(requests);
+          setAdminCoupons(coupons);
           
           setAdminStats({
             usersCount: users.length,
@@ -408,7 +1210,23 @@ const Diagnostico = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isPaymentSuccess = params.get('payment_success') === 'true';
+    const buyProduct = params.get('buy');
     
+    if (buyProduct && user && !loading) {
+      // Clear the param
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      if (buyProduct === 'diagnostico') {
+        const product = { name: 'Diagnóstico POSIÇÃO', price: 'R$ 69' };
+        setSelectedProduct(product);
+        handleCheckout(product.name, 6900, false);
+      } else if (buyProduct === 'clube') {
+        const product = { name: 'Clube POSIÇÃO', price: 'R$ 47 /mês' };
+        setSelectedProduct(product);
+        handleCheckout(product.name, 4700, true);
+      }
+    }
+
     if (isPaymentSuccess && !finalizingRef.current) {
       const finalizePayment = async () => {
         finalizingRef.current = true;
@@ -535,21 +1353,6 @@ const Diagnostico = () => {
           <div className="space-y-4">
             <p>Erro de conexão: O Google Firebase está sendo bloqueado pela sua rede ou ad-blocker.</p>
             <p className="text-[10px] opacity-80 italic">DICA: Tente abrir o app em uma NOVA ABA (ícone no canto superior direito).</p>
-            <button 
-              onClick={() => {
-                localStorage.setItem('demo_mode', 'true');
-                localStorage.setItem('demo_access', JSON.stringify({
-                  diagnostico_comprado: true, // Allow access in demo mode
-                  clube_ativo: true
-                }));
-                setPage(intendedPage || 'home');
-                setIntendedPage(null);
-                window.location.reload();
-              }}
-              className="mt-4 px-4 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-full text-[10px] uppercase tracking-widest font-bold hover:bg-emerald-500/30 transition-all"
-            >
-              Continuar em Modo de Demonstração (Sem Conta)
-            </button>
           </div>
         );
       } else if (err.code === 'auth/invalid-credential') {
@@ -557,6 +1360,39 @@ const Diagnostico = () => {
       } else {
         setAuthError(err.message || "Ocorreu um erro na autenticação.");
       }
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            name: user.displayName || 'Usuário Google',
+            email: user.email,
+            whatsapp: '',
+            role: 'user',
+            paidStatus: false,
+            createdAt: new Date().toISOString()
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+        }
+      }
+      
+      setPage(intendedPage || 'home');
+      setIntendedPage(null);
+    } catch (err: any) {
+      console.error("Google Auth error:", err);
+      setAuthError(err.message);
     }
   };
 
@@ -626,6 +1462,68 @@ const Diagnostico = () => {
     setPage(newPage);
   };
 
+  const handleCheckout = async (productName: string, initialAmount: number, isSubscription: boolean = false) => {
+    setAuthError(null);
+    setIsProcessingPayment(true);
+    
+    try {
+      let currentFirebaseUid = user?.uid;
+      
+      if (!user) {
+        // If no user, we need them to sign up first
+        setPage('auth');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      let amount = initialAmount;
+      // Apply coupon discount if applicable
+      if (appliedCoupon) {
+        if (appliedCoupon.discountType === 'percentage') {
+          amount = Math.round(amount * (1 - appliedCoupon.value / 100));
+        } else if (appliedCoupon.discountType === 'fixed') {
+          amount = Math.max(0, amount - appliedCoupon.value * 100);
+        }
+      }
+
+      localStorage.setItem('pending_auth_data', JSON.stringify({ email: user.email, name: user.displayName }));
+      localStorage.setItem('pending_product', JSON.stringify({ name: productName, price: amount / 100 }));
+
+      // Call server to create checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productName,
+          amount,
+          isSubscription,
+          customerEmail: user.email,
+          firebaseUid: currentFirebaseUid,
+          metadata: {
+            productName,
+            firebaseUid: currentFirebaseUid,
+            couponCode: appliedCoupon?.code
+          }
+        }),
+      });
+
+      const { url, error } = await response.json();
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      // Redirect to Stripe
+      window.location.href = url;
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      setAuthError(err.message || "Ocorreu um erro ao processar o pagamento.");
+      setIsProcessingPayment(false);
+    }
+  };
+
   const handleCheckoutAndSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -635,10 +1533,21 @@ const Diagnostico = () => {
       if (!selectedProduct) return;
 
       // Parse price string to cents
-      // Example: "R$ 147" -> 14700
+      // Example: "R$ 69" -> 6900
+      // Example: "R$ 9" -> 900
       // Example: "R$ 39 /mês" -> 3900
       const priceValue = parseInt(selectedProduct.price.replace(/\D/g, ''));
-      const amount = priceValue * 100;
+      let amount = priceValue * 100;
+
+      // Apply coupon discount if applicable
+      if (appliedCoupon) {
+        if (appliedCoupon.discountType === 'percentage') {
+          amount = Math.round(amount * (1 - appliedCoupon.value / 100));
+        } else if (appliedCoupon.discountType === 'fixed') {
+          amount = Math.max(0, amount - appliedCoupon.value * 100);
+        }
+      }
+
       const isSubscription = selectedProduct.price.includes('/mês');
 
       // Save pending data to finalize after redirect
@@ -723,141 +1632,11 @@ const Diagnostico = () => {
           <div className="space-y-4">
             <p>Erro de conexão: O Google Firebase está sendo bloqueado pela sua rede ou ad-blocker.</p>
             <p className="text-[10px] opacity-80 italic">DICA: Tente abrir o app em uma NOVA ABA (ícone no canto superior direito).</p>
-            <button 
-              onClick={() => {
-                // Bypass auth for demo purposes if network is blocked
-                const mockUser = { uid: 'guest_' + Date.now(), email: authData.email || 'guest@example.com', displayName: authData.name || 'Convidado' };
-                localStorage.setItem('demo_mode', 'true');
-                localStorage.setItem('pending_auth_data', JSON.stringify({ email: mockUser.email, name: mockUser.displayName, whatsapp: authData.whatsapp }));
-                localStorage.setItem('pending_product', JSON.stringify(selectedProduct));
-                
-                // Simulate success for demo
-                const searchParams = new URLSearchParams(window.location.search);
-                searchParams.set('payment_success', 'true');
-                searchParams.set('product', selectedProduct.name);
-                window.history.replaceState({}, '', `${window.location.pathname}?${searchParams.toString()}`);
-                window.location.reload();
-              }}
-              className="mt-4 px-4 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-full text-[10px] uppercase tracking-widest font-bold hover:bg-emerald-500/30 transition-all"
-            >
-              Continuar em Modo de Demonstração (Sem Conta)
-            </button>
           </div>
         );
       } else {
         setAuthError(err.message || "Ocorreu um erro ao processar o pagamento.");
       }
-      setIsProcessingPayment(false);
-    }
-  };
-
-  const handleTestActivation = async () => {
-    if (!selectedProduct) return;
-    setIsProcessingPayment(true);
-    setAuthError(null);
-
-    try {
-      let currentFirebaseUid = user?.uid;
-
-      if (!user) {
-        if (!authData.email || !authData.password || !authData.name) {
-          setAuthError("Por favor, preencha todos os campos para criar sua conta de teste.");
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        try {
-          const userCredential = await createUserWithEmailAndPassword(auth, authData.email, authData.password);
-          currentFirebaseUid = userCredential.user.uid;
-          
-          await setDoc(doc(db, 'users', currentFirebaseUid), {
-            name: authData.name,
-            email: authData.email,
-            whatsapp: authData.whatsapp || '',
-            role: 'user',
-            paidStatus: false,
-            createdAt: new Date().toISOString()
-          }, { merge: true });
-        } catch (e: any) {
-          if (e.code === 'auth/email-already-in-use') {
-            const userCredential = await signInWithEmailAndPassword(auth, authData.email, authData.password);
-            currentFirebaseUid = userCredential.user.uid;
-          } else if (e.code === 'auth/network-request-failed') {
-            // Fallback for network error in test mode
-            console.warn("Network error during test activation, using local fallback");
-            localStorage.setItem('demo_mode', 'true');
-            localStorage.setItem('demo_access', JSON.stringify({
-              diagnostico_comprado: !selectedProduct.name.includes('Clube') && !selectedProduct.name.includes('Reprograma'),
-              clube_ativo: selectedProduct.name.includes('Clube'),
-              reprogramacao_pessoal_comprada: selectedProduct.name === 'Reprogramação Pessoal',
-              reprogramar_eu_comprado: selectedProduct.name === 'Reprograme-se'
-            }));
-            
-            if (selectedProduct.name === 'Mapeamento Emocional Floral') {
-              showPage('mapeamento_form');
-            } else if (selectedProduct.name === 'Clube do Tarô') {
-              showPage('clube_taro_content');
-            } else if (selectedProduct.name.includes('Clube')) {
-              showPage('clube_clarear_content');
-            } else {
-              showPage('confirmation');
-            }
-            setIsProcessingPayment(false);
-            return;
-          } else {
-            throw e;
-          }
-        }
-      }
-
-      if (!currentFirebaseUid) throw new Error("Usuário não identificado.");
-
-      // Update Firestore directly for test mode
-      const isClube = selectedProduct.name.includes('Clube');
-      const isReprogramacao = selectedProduct.name === 'Reprogramação Pessoal';
-      const isReprogrameSe = selectedProduct.name === 'Reprograme-se';
-      
-      const updateData: any = {
-        lastPaymentAt: serverTimestamp(),
-        testMode: true
-      };
-
-      if (isClube) {
-        updateData.clube_ativo = true;
-      } else if (isReprogramacao) {
-        updateData.reprogramacao_pessoal_comprada = true;
-      } else if (isReprogrameSe) {
-        updateData.reprogramar_eu_comprado = true;
-      } else {
-        updateData.paidStatus = true;
-      }
-
-      try {
-        await setDoc(doc(db, 'users', currentFirebaseUid), updateData, { merge: true });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `users/${currentFirebaseUid}`);
-      }
-
-      // Force refresh access
-      if (typeof refreshAccess === 'function') {
-        await refreshAccess(currentFirebaseUid);
-      }
-
-      // Redirect
-      if (selectedProduct.name === 'Mapeamento Emocional Floral') {
-        showPage('mapeamento_form');
-      } else if (selectedProduct.name === 'Clube do Tarô') {
-        showPage('clube_taro_content');
-      } else if (isClube) {
-        showPage('clube_clarear_content');
-      } else {
-        showPage('confirmation');
-      }
-
-    } catch (err: any) {
-      console.error("Test activation error:", err);
-      setAuthError(err.message || "Erro na ativação de teste.");
-    } finally {
       setIsProcessingPayment(false);
     }
   };
@@ -946,16 +1725,19 @@ const Diagnostico = () => {
     finalAnswers.forEach(a => counts[a] = (counts[a] || 0) + 1);
     const mostFrequent = Object.keys(counts).reduce((a, b) => (counts[a] || 0) > (counts[b] || 0) ? a : b);
     
-    let archetype = '';
+    let arcanoName = '';
     let theme = '';
     
     switch(mostFrequent) {
-      case 'A': archetype = 'O Controlador'; theme = 'Rigidez e Controle'; break;
-      case 'B': archetype = 'O Responsável'; theme = 'Sobrecarga e Dever'; break;
-      case 'C': archetype = 'O Adaptável'; theme = 'Evitação e Flexibilidade'; break;
-      case 'D': archetype = 'O Retraído'; theme = 'Isolamento e Proteção'; break;
-      default: archetype = 'O Explorador'; theme = 'Busca por Sentido';
+      case 'A': arcanoName = 'Imperador'; theme = 'Rigidez e Controle'; break;
+      case 'B': arcanoName = 'Justica'; theme = 'Sobrecarga e Dever'; break;
+      case 'C': arcanoName = 'Roda da Fortuna'; theme = 'Evitação e Flexibilidade'; break;
+      case 'D': arcanoName = 'Eremita'; theme = 'Isolamento e Proteção'; break;
+      default: arcanoName = 'Louco'; theme = 'Busca por Sentido';
     }
+
+    const arcanoData = ARCANOS_MATRIZ.find(a => a.arcano === arcanoName) || ARCANOS_MATRIZ[0];
+    setSelectedArcano(arcanoData);
 
     // Save to Firestore
     if (user) {
@@ -964,9 +1746,10 @@ const Diagnostico = () => {
         await setDoc(diagRef, {
           userId: user.uid,
           userName: userData?.name || user.email || 'Usuário',
-          archetype,
+          archetype: arcanoData.arcano,
           theme,
           answers: finalAnswers,
+          arcanoData,
           createdAt: new Date().toISOString()
         });
       } catch (error) {
@@ -974,10 +1757,10 @@ const Diagnostico = () => {
       }
     }
     
-    setMapeamentoResult(`Sua análise revelou o arquétipo **${archetype}**. Sua temática principal é **${theme}**.`);
+    setMapeamentoResult(`Sua análise revelou o arquétipo **${arcanoData.arcano}**. Sua temática principal é **${theme}**.`);
     
     setTimeout(() => {
-      setAnalysisText(`Seu padrão dominante é ${archetype}. Isso revela uma tendência a ${theme.toLowerCase()}.`);
+      setAnalysisText(`Seu padrão dominante é ${arcanoData.arcano}. Isso revela uma tendência a ${theme.toLowerCase()}.`);
     }, 1500);
 
     setTimeout(() => {
@@ -993,13 +1776,6 @@ const Diagnostico = () => {
     <>
       <div className="atmosphere"></div>
       <div className="relative z-10 min-h-screen">
-        {/* Test Mode Banner */}
-        <div className="bg-emerald-500/10 border-b border-emerald-500/20 py-2 text-center backdrop-blur-md sticky top-0 z-[100]">
-          <p className="text-[10px] uppercase tracking-[0.5em] text-emerald-400 font-bold flex items-center justify-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Modo de Teste Ativo • POSIÇÃO Beta
-          </p>
-        </div>
         {/* User Status Bar */}
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center px-6 py-6 md:py-8 gap-4 sm:gap-0">
           <h1 className="text-xl md:text-2xl text-gold-main tracking-widest uppercase text-sm font-light">Posição</h1>
@@ -1055,10 +1831,14 @@ const Diagnostico = () => {
                   <p className="text-gold-main/30 uppercase tracking-[0.4em] md:tracking-[0.6em] text-[9px] md:text-[10px] font-bold">Alinhamento Interno</p>
                 </div>
                 <div className="flex flex-col gap-6 items-center sm:items-end">
-                  <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Modo Teste</span>
-                  </div>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => showPage('admin_dashboard')}
+                      className="text-emerald-400 hover:text-emerald-300 transition-all duration-500 text-[10px] uppercase tracking-[0.3em] font-bold pb-2 border-b border-emerald-500/10 hover:border-emerald-500 flex items-center gap-2"
+                    >
+                      <ShieldCheck size={14} /> Admin
+                    </button>
+                  )}
                   <button 
                     onClick={() => user ? setPage('jornada_emocional') : showPage('auth')}
                     className="text-gold-main/40 hover:text-gold-main transition-all duration-500 text-[10px] uppercase tracking-[0.3em] font-bold pb-2 border-b border-gold-main/10 hover:border-gold-main"
@@ -1165,12 +1945,6 @@ const Diagnostico = () => {
               className="animate-screen text-left max-w-md mx-auto"
             >
               <div className="back" onClick={() => setPage('home')}>← Voltar</div>
-              <div className="flex justify-center mb-8">
-                <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Modo Teste Ativo</span>
-                </div>
-              </div>
               <h2 className="serif text-5xl text-gold-light mb-12 text-center">{authMode === 'login' ? 'Bem-vindo' : 'Criar Conta'}</h2>
               
               <div className="glass-card p-6 md:p-10">
@@ -1236,6 +2010,27 @@ const Diagnostico = () => {
                   <button type="submit" className="button w-full mt-4">
                     {authMode === 'login' ? 'Entrar' : 'Cadastrar'}
                   </button>
+
+                  <div className="relative flex items-center justify-center my-4">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/10"></div>
+                    </div>
+                    <span className="relative px-4 text-[9px] uppercase tracking-widest text-white/20 bg-[#0a0a0a]">ou</span>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    onClick={handleGoogleSignIn}
+                    className="flex items-center justify-center gap-3 w-full py-4 px-6 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs tracking-widest uppercase font-bold"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                    Entrar com Google
+                  </button>
                 </form>
 
                 <div className="mt-10 text-center flex flex-col gap-4">
@@ -1244,16 +2039,6 @@ const Diagnostico = () => {
                     className="text-gold-main/40 hover:text-gold-main transition-colors text-[10px] uppercase tracking-[0.2em] font-bold"
                   >
                     {authMode === 'login' ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entre aqui'}
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('signup');
-                      setAuthData({ name: 'Usuário Teste', email: `teste_${Date.now()}@exemplo.com`, password: 'password123', whatsapp: '(11) 99999-9999' });
-                    }}
-                    className="text-emerald-400/40 text-[9px] hover:text-emerald-400 transition-colors font-bold uppercase tracking-widest"
-                  >
-                    Preencher Dados de Teste
                   </button>
                 </div>
               </div>
@@ -1269,12 +2054,6 @@ const Diagnostico = () => {
               className="animate-screen text-center max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => setPage('home')}>← Voltar</div>
-              <div className="flex justify-center mb-6">
-                <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Modo Teste Ativo</span>
-                </div>
-              </div>
               <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] mb-6 block font-bold">🌿 Mapeamento Emocional Floral</span>
               <h2 className="serif text-5xl md:text-6xl text-gold-light mb-12">Você não sente o que sente por acaso.</h2>
               
@@ -1298,8 +2077,8 @@ const Diagnostico = () => {
                     </div>
                   ))}
                 </div>
-                <div className="text-center">
-                  <div className="text-gold-main text-3xl serif mb-8">R$ 27,00</div>
+                <div className="text-center space-y-4">
+                  <div className="text-gold-main text-3xl serif mb-8">R$ 9,00</div>
                   {access?.diagnostico_comprado ? (
                     <button 
                       onClick={() => showPage('mapeamento_form')}
@@ -1310,12 +2089,21 @@ const Diagnostico = () => {
                   ) : (
                     <button 
                       onClick={() => {
-                        setSelectedProduct({ name: 'Mapeamento Emocional Floral', price: 'R$ 27' });
+                        setSelectedProduct({ name: 'Mapeamento Emocional Floral', price: 'R$ 9' });
                         showPage('checkout');
                       }}
                       className="button w-full"
                     >
                       👉 Quero acessar meu mapeamento
+                    </button>
+                  )}
+
+                  {isAdmin && (
+                    <button 
+                      onClick={() => showPage('mapeamento_form')}
+                      className="text-emerald-400 hover:text-emerald-300 text-[10px] uppercase tracking-widest font-bold flex items-center justify-center gap-2 py-4 border border-emerald-500/20 rounded-2xl bg-emerald-500/5 hover:bg-emerald-500/10 transition-all w-full"
+                    >
+                      <ShieldCheck size={14} /> Testar Mapeamento (Admin)
                     </button>
                   )}
                 </div>
@@ -1331,278 +2119,220 @@ const Diagnostico = () => {
               exit={{ opacity: 0, y: -20 }}
               className="animate-screen text-left max-w-2xl mx-auto"
             >
-              <div className="back" onClick={() => setPage('home')}>← Voltar</div>
-              <div className="flex justify-between items-center mb-12">
-                <h2 className="serif text-4xl text-gold-light">Conte-nos sobre seu momento atual</h2>
-                <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Teste</span>
+              <div className="back" onClick={() => {
+                if (currentMapeamentoStep > 0) {
+                  setCurrentMapeamentoStep(currentMapeamentoStep - 1);
+                } else {
+                  setPage('home');
+                }
+              }}>← {currentMapeamentoStep > 0 ? 'Voltar Pergunta' : 'Sair'}</div>
+              
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] mb-2 block font-bold">Mapeamento Emocional Floral</span>
+                  <h2 className="serif text-3xl text-gold-light">Pergunta {currentMapeamentoStep + 1} de {mapeamentoQuestions.length}</h2>
                 </div>
+                <div className="text-right">
+                  <span className="text-gold-main text-xl font-serif">{Math.round(((currentMapeamentoStep) / mapeamentoQuestions.length) * 100)}%</span>
+                </div>
+              </div>
+
+              <div className="h-1 w-full bg-white/5 rounded-full mb-12 overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((currentMapeamentoStep) / mapeamentoQuestions.length) * 100}%` }}
+                  className="h-full bg-gold-main shadow-[0_0_15px_rgba(212,175,55,0.5)]"
+                />
               </div>
               
-              <div className="glass-card p-6 md:p-10 space-y-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Qual sua emoção dominante hoje?</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="Ex: Ansiedade, Tristeza, Medo..."
-                    value={mapeamentoData.emocao}
-                    onChange={(e) => setMapeamentoData({...mapeamentoData, emocao: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Qual padrão emocional você percebe se repetindo?</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="Ex: Procrastinação, busca por aprovação..."
-                    value={mapeamentoData.padrao}
-                    onChange={(e) => setMapeamentoData({...mapeamentoData, padrao: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Como você costuma se defender emocionalmente?</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="Ex: Isolamento, agressividade, ironia..."
-                    value={mapeamentoData.defesa}
-                    onChange={(e) => setMapeamentoData({...mapeamentoData, defesa: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Qual sua maior ferida emocional?</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="Ex: Rejeição, abandono, traição..."
-                    value={mapeamentoData.ferida}
-                    onChange={(e) => setMapeamentoData({...mapeamentoData, ferida: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Qual seu maior desejo atual?</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="Ex: Paz mental, sucesso profissional..."
-                    value={mapeamentoData.desejo}
-                    onChange={(e) => setMapeamentoData({...mapeamentoData, desejo: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Com qual arquétipo você mais se identifica agora?</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="Ex: O Guerreiro, O Cuidador, O Explorador..."
-                    value={mapeamentoData.arquetipo}
-                    onChange={(e) => setMapeamentoData({...mapeamentoData, arquetipo: e.target.value})}
-                  />
-                </div>
-                
-                <div className="pt-8 flex flex-col gap-6">
-                  <button 
-                    type="button"
-                    onClick={() => setMapeamentoData({
-                      emocao: 'Ansiedade',
-                      padrao: 'Procrastinação',
-                      defesa: 'Isolamento',
-                      ferida: 'Rejeição',
-                      desejo: 'Paz interna',
-                      arquetipo: 'O Explorador'
-                    })}
-                    className="text-emerald-400/40 text-[9px] hover:text-emerald-400 transition-colors font-bold uppercase tracking-widest text-center"
-                  >
-                    Preencher Dados de Teste
-                  </button>
-                  <button 
-                    onClick={async () => {
-                    if (!mapeamentoData.emocao || !mapeamentoData.padrao || !mapeamentoData.defesa || !mapeamentoData.ferida || !mapeamentoData.desejo || !mapeamentoData.arquetipo) {
-                      alert("Por favor, preencha todos os campos.");
-                      return;
-                    }
+              <div className="space-y-8">
+                <h3 className="serif text-2xl text-gold-light leading-relaxed">
+                  {mapeamentoQuestions[currentMapeamentoStep].pergunta}
+                </h3>
 
-                    setPage('mapeamento_analysis');
-                    try {
-                      const apiKey = process.env.GEMINI_API_KEY;
-                      if (!apiKey || apiKey === 'undefined') {
-                        throw new Error("API Key do Gemini não configurada. Por favor, configure-a nas configurações do projeto.");
-                      }
+                <div className="grid grid-cols-1 gap-4">
+                  {mapeamentoQuestions[currentMapeamentoStep].opcoes.map((opcao, idx) => (
+                    <button
+                      key={idx}
+                      onClick={async () => {
+                        const newAnswers = [...mapeamentoAnswers];
+                        newAnswers[currentMapeamentoStep] = {
+                          pergunta_id: mapeamentoQuestions[currentMapeamentoStep].id,
+                          texto: opcao.texto,
+                          emocao: opcao.emocao,
+                          peso: opcao.peso,
+                          florais: opcao.florais,
+                          tipo: mapeamentoQuestions[currentMapeamentoStep].tipo
+                        };
+                        setMapeamentoAnswers(newAnswers);
 
-                      const ai = new GoogleGenAI({ apiKey });
-                      
-                      // Step 1: Select Florais
-                      const selectResponse = await ai.models.generateContent({
-                        model: "gemini-3-flash-preview",
-                        contents: `Você é um especialista em Florais de Bach com conhecimento profundo em emoções humanas, padrões comportamentais e leitura psicoemocional.
-Sua função é selecionar entre 4 a 6 florais de Bach com base nos dados emocionais fornecidos.
+                        if (currentMapeamentoStep < mapeamentoQuestions.length - 1) {
+                          setCurrentMapeamentoStep(currentMapeamentoStep + 1);
+                        } else {
+                          // Finalize and Analyze
+                          setPage('mapeamento_analysis');
+                          try {
+                            const apiKey = process.env.GEMINI_API_KEY;
+                            if (!apiKey || apiKey === 'undefined') {
+                              throw new Error("API Key do Gemini não configurada.");
+                            }
 
-REGRAS IMPORTANTES:
-- Nunca selecione mais de 6 florais
-- Nunca selecione menos de 4 florais
-- Sempre inclua:
-  1 floral principal (emoção dominante)
-  1 floral de padrão comportamental
-  1 floral de defesa emocional
-  1 floral de raiz (ferida emocional)
-  1 floral de expansão (estado desejado)
-  +1 floral opcional (variação inteligente)
+                            const ai = new GoogleGenAI({ apiKey });
+                            
+                            // Prepare context for AI
+                            const quizContext = newAnswers.map(a => `- ${a.tipo}: ${a.texto} (Emoção: ${a.emocao})`).join('\n');
+                            const suggestedFlorais = Array.from(new Set(newAnswers.flatMap(a => a.florais))).join(', ');
 
-- Evite redundância (não repetir florais com função idêntica)
-- Priorize coerência emocional
-- Caso haja dúvida entre dois florais, escolha o mais profundo (não o mais superficial)
+                            // Populate mapeamentoData for backward compatibility (e.g. result page logic)
+                            const derivedData = {
+                              emocao: newAnswers.find(a => a.tipo === 'emocao')?.texto || '',
+                              padrao: newAnswers.find(a => a.tipo === 'padrao')?.texto || '',
+                              defesa: newAnswers.find(a => a.tipo === 'defesa')?.texto || '',
+                              ferida: newAnswers.find(a => a.tipo === 'ferida')?.texto || '',
+                              desejo: newAnswers.find(a => a.tipo === 'expansao')?.texto || '',
+                              arquetipo: 'Calculado pela IA'
+                            };
+                            setMapeamentoData(derivedData);
 
----
-BASE DE CORRESPONDÊNCIA:
-MEDOS: Aspen, Mimulus, Rock Rose, Cherry Plum, Red Chestnut
-INCERTEZA: Cerato, Scleranthus, Gentian, Gorse, Hornbeam, Wild Oat
-FALTA DE INTERESSE NO PRESENTE: Clematis, Honeysuckle, Wild Rose, Olive, White Chestnut, Mustard, Chestnut Bud
-SOLIDÃO: Water Violet, Impatiens, Heather
-SENSIBILIDADE: Agrimony, Centaury, Walnut, Holly
-DESÂNIMO: Larch, Pine, Elm, Sweet Chestnut, Star of Bethlehem, Willow, Oak, Crab Apple
-CONTROLE: Chicory, Vervain, Vine, Beech, Rock Water
+                            // Step 1: Select Florais (Refined by AI)
+                            let floraisList = suggestedFlorais;
+                            try {
+                              const selectResponse = await ai.models.generateContent({
+                                model: "gemini-3-flash-preview",
+                                contents: `Você é um especialista em Florais de Bach.
+Com base nas respostas do quiz abaixo, selecione a fórmula ideal (4 a 6 florais).
 
----
-ENTRADA:
-Emoção dominante: ${mapeamentoData.emocao}
-Padrão emocional: ${mapeamentoData.padrao}
-Defesa emocional: ${mapeamentoData.defesa}
-Ferida emocional: ${mapeamentoData.ferida}
-Desejo atual: ${mapeamentoData.desejo}
+RESPOSTAS DO QUIZ:
+${quizContext}
 
----
-INSTRUÇÃO FINAL:
-Selecione de 4 a 6 florais coerentes com o quadro emocional.
-Organize assim:
-1. Floral principal:
-2. Floral de padrão:
-3. Floral de defesa:
-4. Floral de raiz:
-5. Floral de expansão:
-6. Floral complementar (opcional):
-Retorne apenas os nomes dos florais.`,
-                      });
-                      
-                      const floraisList = selectResponse.text;
+FLORAIS SUGERIDOS PELO MAPEAMENTO:
+${suggestedFlorais}
 
-                      // Step 2: Generate Full Report and Score
-                      const reportResponse = await ai.models.generateContent({
-                        model: "gemini-3.1-pro-preview",
-                        contents: `Você é um especialista em análise emocional com base em psicologia, florais de Bach e arquétipos comportamentais.
-Sua função é gerar uma devolutiva terapêutica personalizada com base nos dados fornecidos.
+REGRAS:
+- Selecione entre 4 e 6 florais.
+- Priorize os florais que aparecem mais vezes ou que tratam a ferida/emoção central.
+- Retorne apenas os nomes dos florais separados por vírgula.`,
+                              });
+                              floraisList = selectResponse.text || suggestedFlorais;
+                            } catch (e) {
+                              console.error("Error selecting florais with AI:", e);
+                            }
 
-IMPORTANTE:
-- Não seja genérico
-- Não repita frases padrão
-- Não use linguagem mística exagerada
-- Não use termos técnicos complexos
-- Não julgue o usuário
-- Não gere culpa
-- Seja acolhedor, claro e direto
+                            // Step 2: Generate Full Report
+                            let resultText = "";
+                            try {
+                              const reportResponse = await ai.models.generateContent({
+                                model: "gemini-3.1-pro-preview",
+                                contents: `Você é um especialista em análise emocional e Florais de Bach.
+Gere um relatório terapêutico personalizado (Mapeamento Emocional Floral).
 
-DADOS DE ENTRADA:
-Emoção dominante: ${mapeamentoData.emocao}
-Padrão emocional: ${mapeamentoData.padrao}
-Mecanismo de defesa: ${mapeamentoData.defesa}
-Ferida emocional: ${mapeamentoData.ferida}
-Desejo atual: ${mapeamentoData.desejo}
-Arquétipo identificado: ${mapeamentoData.arquetipo}
-Florais selecionados: ${floraisList}
+DADOS DO QUIZ:
+${quizContext}
 
-INSTRUÇÕES:
-Gere a resposta seguindo EXATAMENTE essa estrutura:
+FLORAIS SELECIONADOS:
+${floraisList}
 
----
+LISTA DE ARCANOS POSSÍVEIS (Escolha o que melhor representa o padrão do usuário):
+${ARCANOS_MATRIZ.map(a => a.arcano).join(', ')}
+
+ESTRUTURA DA RESPOSTA (Markdown):
 1. TÍTULO: "Seu Mapeamento Emocional"
----
-2. LEITURA EMOCIONAL (2 a 3 parágrafos)
-Explique: O que a pessoa está sentindo, o padrão emocional por trás disso, como isso impacta a vida dela. Conecte com o arquétipo identificado.
----
-3. ARQUÉTIPO ATIVO
-Nome do arquétipo + breve explicação (máximo 3 linhas)
----
-4. FÓRMULA FLORAL
-Liste os florais e explique em 1 linha cada um (use a lista fornecida: ${floraisList}).
----
-5. MODO DE USO
-- 4 gotas, 4 vezes ao dia
-- Pode incluir orientação simples adicional
----
-6. TEMPO DE AÇÃO
-- Percepções iniciais: 3 a 7 dias
-- Ajustes mais profundos: 14 a 21 dias
----
-7. REAVALIAÇÃO
-- Recomendar reavaliação em 21 dias ou antes
----
-8. DIRECIONAMENTO TERAPÊUTICO
-Sugira continuidade com acompanhamento terapêutico. Seja sutil, sem forçar venda.
----
-9. FRASE DE CONSCIÊNCIA
-Crie uma frase impactante, curta e personalizada.
----
-10. PRÓXIMO PASSO DE CONSCIÊNCIA
-Finalize com uma mensagem que mostre como esse padrão pode ser transmutado e qual o próximo nível de percepção que o usuário deve buscar.
----
-11. SCORE DE ALINHAMENTO
-Gere um número de 0 a 100 representando o nível de alinhamento atual (onde 0 é desequilíbrio total e 100 é alinhamento pleno).
-Retorne apenas o número após o rótulo "SCORE:".
+2. ARCANO DETECTADO: Retorne apenas o nome do Arcano escolhido da lista acima. Ex: "ARCANO: Imperador"
+3. LEITURA EMOCIONAL: Analise os padrões identificados no quiz (2-3 parágrafos).
+4. ARQUÉTIPO ATIVO: Identifique o arquétipo que mais se manifesta nessas respostas e explique por quê.
+5. FÓRMULA FLORAL: Liste os florais (${floraisList}) e explique brevemente a função de cada um para este caso.
+6. MODO DE USO: 4 gotas, 4 vezes ao dia.
+7. TEMPO DE AÇÃO: Percepções em 3-7 dias, ajustes profundos em 21 dias.
+8. FRASE DE CONSCIÊNCIA: Uma frase curta e poderosa para o momento do usuário.
+9. PRÓXIMO PASSO: Orientação final de evolução.
+10. SCORE: Gere um número de 0 a 100 de alinhamento emocional. Retorne como "SCORE: [numero]".`,
+                              });
+                              resultText = reportResponse.text || "";
+                            } catch (e) {
+                              console.error("Error generating report with Pro:", e);
+                              // Fallback to Flash if Pro fails
+                              const fallbackResponse = await ai.models.generateContent({
+                                model: "gemini-3-flash-preview",
+                                contents: `Gere um relatório simplificado de mapeamento emocional floral com base nestes dados: ${quizContext}. Florais: ${floraisList}. Escolha um Arcano de: ${ARCANOS_MATRIZ.map(a => a.arcano).join(', ')}. Retorne no formato: ARCANO: [Nome], seguido da análise.`,
+                              });
+                              resultText = fallbackResponse.text || "Não foi possível gerar o relatório completo no momento.";
+                            }
 
-FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
-                      });
+                            const scoreMatch = resultText.match(/SCORE:\s*(\d+)/);
+                            const score = scoreMatch ? parseInt(scoreMatch[1]) : 75;
+                            
+                            const arcanoMatch = resultText.match(/ARCANO:\s*([^\n]+)/);
+                            let arcanoName = arcanoMatch ? arcanoMatch[1].replace(/[#*:]/g, '').trim() : '';
+                            
+                            // Robust arcano detection
+                            if (!arcanoName || !ARCANOS_MATRIZ.some(a => a.arcano.toLowerCase() === arcanoName.toLowerCase())) {
+                              const foundArcano = ARCANOS_MATRIZ.find(a => resultText.toLowerCase().includes(a.arcano.toLowerCase()));
+                              if (foundArcano) arcanoName = foundArcano.arcano;
+                              else arcanoName = 'Louco'; // Safe fallback
+                            }
 
-                      const resultText = reportResponse.text;
-                      const scoreMatch = resultText.match(/SCORE:\s*(\d+)/);
-                      const alignmentScore = scoreMatch ? parseInt(scoreMatch[1]) : 50;
-                      
-                      setMapeamentoResult(resultText);
+                            const arcanoData = ARCANOS_MATRIZ.find(a => a.arcano.toLowerCase() === arcanoName.toLowerCase()) || ARCANOS_MATRIZ[0];
+                            setSelectedArcano(arcanoData);
 
-                      // Save to Firestore
-                      if (user) {
-                        try {
-                          const mappingRef = doc(collection(db, 'mappings'));
-                          await setDoc(mappingRef, {
-                            userId: user.uid,
-                            createdAt: new Date().toISOString(),
-                            emocao: mapeamentoData.emocao,
-                            padrao: mapeamentoData.padrao,
-                            defesa: mapeamentoData.defesa,
-                            ferida: mapeamentoData.ferida,
-                            desejo: mapeamentoData.desejo,
-                            arquetipo: mapeamentoData.arquetipo,
-                            florais: floraisList,
-                            result: resultText,
-                            alignmentScore: alignmentScore,
-                            phrase: resultText.split('FRASE DE CONSCIÊNCIA')[1]?.split('---')[0]?.replace(/[#*:]/g, '').trim() || ''
-                          });
-                          
-                          // Refresh history
-                          const q = query(collection(db, 'mappings'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-                          const querySnapshot = await getDocs(q);
-                          const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                          setHistory(docs);
-                        } catch (fsError) {
-                          handleFirestoreError(fsError, OperationType.WRITE, 'mappings');
+                            setMapeamentoResult(resultText);
+                            
+                            // Save to Firestore
+                            if (user) {
+                              try {
+                                const mappingRef = doc(collection(db, 'mappings'));
+                                await setDoc(mappingRef, {
+                                  userId: user.uid,
+                                  userEmail: user.email,
+                                  type: 'mapeamento_floral',
+                                  arcano: arcanoName,
+                                  answers: newAnswers.map(a => ({
+                                    pergunta_id: a.pergunta_id,
+                                    emocao: a.emocao,
+                                    peso: a.peso
+                                  })),
+                                  // For backward compatibility in admin/history
+                                  emocao: derivedData.emocao,
+                                  padrao: derivedData.padrao,
+                                  defesa: derivedData.defesa,
+                                  ferida: derivedData.ferida,
+                                  desejo: derivedData.desejo,
+                                  arquetipo: arcanoName,
+                                  result: resultText,
+                                  alignmentScore: score,
+                                  florais: floraisList,
+                                  createdAt: new Date().toISOString(),
+                                  phrase: resultText.split('FRASE DE CONSCIÊNCIA')[1]?.split('---')[0]?.replace(/[#*:]/g, '').trim() || ''
+                                });
+
+                                // Refresh history
+                                const q = query(collection(db, 'mappings'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+                                const querySnapshot = await getDocs(q);
+                                const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                                setHistory(docs);
+                              } catch (error) {
+                                console.error("Firestore save error:", error);
+                                // We don't throw here to still show the result to the user
+                              }
+                            }
+
+                            setPage('mapeamento_result');
+                          } catch (err: any) {
+                            console.error("Error in mapping analysis:", err);
+                            setMapeamentoResult("Desculpe, ocorreu um erro ao processar sua análise. Por favor, tente novamente em instantes.\n\nDetalhes: " + err.message);
+                            setPage('mapeamento_result');
+                          }
                         }
-                      }
-
-                      setPage('mapeamento_result');
-                    } catch (error) {
-                      console.error(error);
-                      alert("Erro ao gerar mapeamento. Tente novamente.");
-                      showPage('mapeamento_form');
-                    }
-                  }}
-                  className="button w-full"
-                >
-                  Gerar Meu Mapeamento
-                </button>
+                      }}
+                      className="w-full p-6 bg-white/5 border border-white/5 rounded-2xl text-left hover:bg-gold-main/10 hover:border-gold-main/30 transition-all group flex justify-between items-center"
+                    >
+                      <span className="text-white/60 group-hover:text-gold-light transition-colors">{opcao.texto}</span>
+                      <ArrowRight size={18} className="text-gold-main/20 group-hover:text-gold-main group-hover:translate-x-1 transition-all" />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
           {page === 'mapeamento_analysis' && (
             <motion.div 
@@ -1613,10 +2343,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               className="animate-screen flex flex-col items-center justify-center text-center min-h-[60vh]"
             >
               <div className="w-24 h-24 border-2 border-gold-main/20 border-t-gold-main rounded-full animate-spin mb-12" />
-              <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10 mb-8">
-                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span>Modo Teste Ativo</span>
-              </div>
               <h2 className="serif text-3xl text-gold-light mb-6">Sintonizando sua frequência...</h2>
               <p className="text-white/40 font-light tracking-widest uppercase text-[10px] animate-pulse">
                 Analisando padrões arquetípicos e florais
@@ -1633,12 +2359,50 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               className="animate-screen text-left max-w-4xl mx-auto"
             >
               <div className="back" onClick={() => setPage('home')}>← Voltar</div>
-              <div className="flex justify-center mb-12">
-                <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Modo Teste Ativo</span>
+              
+              {selectedArcano && (
+                <div className="mb-12 glass-card border-gold-main/30 bg-gold-main/[0.03] p-8 md:p-12">
+                  <div className="flex flex-col md:flex-row gap-12 items-center">
+                    <div className="w-48 h-72 bg-gold-main/10 rounded-2xl border border-gold-main/20 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gold-main/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="text-gold-main/20 text-[8px] uppercase tracking-[0.5em] mb-4 font-bold">Arquétipo</span>
+                      <h3 className="serif text-3xl text-gold-light mb-4">{selectedArcano.arcano}</h3>
+                      <div className="w-12 h-[1px] bg-gold-main/30" />
+                    </div>
+                    
+                    <div className="flex-1 space-y-8">
+                      <div>
+                        <h4 className="text-gold-main/40 text-[10px] uppercase tracking-widest font-bold mb-3">Sombra Ativa</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedArcano.sombra.map((s, i) => (
+                            <span key={i} className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-white/60 uppercase tracking-wider">
+                              {s.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-gold-main/40 text-[10px] uppercase tracking-widest font-bold mb-3">Direção de Cura</h4>
+                        <p className="text-gold-light text-lg font-light italic">"{selectedArcano.direcao}"</p>
+                      </div>
+
+                      <div>
+                        <h4 className="text-gold-main/40 text-[10px] uppercase tracking-widest font-bold mb-3">Caminhos de Evolução</h4>
+                        <div className="flex flex-wrap gap-4">
+                          {selectedArcano.evolucao.map((e, i) => (
+                            <div key={i} className="flex items-center gap-2 text-white/40 text-xs">
+                              <ArrowRight size={12} className="text-gold-main/40" />
+                              <span>{e}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
               <div className="glass-card p-6 md:p-10 md:p-16">
                 <div className="markdown-body prose prose-invert max-w-none">
                   <ReactMarkdown>{mapeamentoResult || ''}</ReactMarkdown>
@@ -1691,10 +2455,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-6 md:mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Mapeamento de Frequência</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-4xl md:text-5xl text-gold-light mb-6">Diagnóstico POSIÇÃO</h2>
                 <div className="price mb-8 md:mb-10">R$ 69</div>
@@ -1742,10 +2502,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Frequência Personalizada</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-5xl text-gold-light mb-6">Reprogramação Pessoal</h2>
                 <div className="price mb-10">R$ 129</div>
@@ -1802,10 +2558,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Manutenção Diária</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-5xl text-gold-light mb-6">Clube Clarear</h2>
                 <div className="price mb-10">R$ 39 <span className="text-xs uppercase tracking-widest text-white/20">/ mês</span></div>
@@ -1864,10 +2616,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01] mb-12">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Agenda Mensal</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-5xl text-gold-light mb-6">Rituais do Mês</h2>
                 <p className="text-white/40 mb-8 leading-relaxed text-lg font-light">
@@ -1951,10 +2699,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] mb-4 block font-bold">Área de Membros</span>
                   <h2 className="serif text-4xl md:text-5xl text-gold-light mb-6">Clube Clarear</h2>
                 </div>
-                <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10 mb-6">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Modo Teste</span>
-                </div>
               </header>
 
               <div className="grid gap-8">
@@ -2025,10 +2769,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                   <h2 className="serif text-4xl md:text-5xl text-gold-light mb-6">Clube do Tarô</h2>
                 </div>
                 <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10 self-end">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Modo Teste</span>
-                  </div>
                   <button 
                     onClick={() => window.open('https://wa.me/5511999999999?text=Olá! Gostaria de fazer minha pergunta semanal do Clube do Tarô.', '_blank')}
                     className="button bg-emerald-500/10 border-emerald-500/30 text-emerald-400 flex items-center gap-3 px-6 py-3 rounded-full hover:bg-emerald-500/20 transition-all"
@@ -2101,10 +2841,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Transformação Estrutural</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-5xl text-gold-light mb-6">Reprograme-se</h2>
                 <div className="price mb-10">R$ 249</div>
@@ -2161,10 +2897,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Orientação Energética</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-5xl text-gold-light mb-6">Clube do Tarô</h2>
                 <div className="price mb-10">R$ 117 <span className="text-xs uppercase tracking-widest text-white/20">/ mês</span></div>
@@ -2230,7 +2962,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                 </div>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
                   <span className="text-white/30 text-sm">Ambiente</span>
-                  <span className="text-emerald-400/60 text-[10px] uppercase tracking-widest font-bold">Modo de Teste</span>
                 </div>
               </div>
               <button 
@@ -2337,10 +3068,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                 <div>
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] mb-4 block font-bold">Histórico</span>
                   <h2 className="serif text-5xl text-gold-light mb-6">Sua Jornada Emocional</h2>
-                </div>
-                <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10 mb-6">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Modo Teste</span>
                 </div>
               </header>
                 {!selectedMapping && history.length > 1 && (
@@ -2537,10 +3264,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                     <ShieldCheck size={14} />
                     <span>Acesso Restrito</span>
                   </div>
-                  <div className="flex items-center gap-3 text-emerald-400/40 text-[10px] uppercase tracking-widest font-bold bg-emerald-400/5 px-4 py-2 rounded-full border border-emerald-400/10">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Modo Teste</span>
-                  </div>
                 </div>
               </header>
 
@@ -2556,10 +3279,14 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                     { id: 'clube', label: 'Clube Clarear', icon: Music },
                     { id: 'sessions', label: 'Sessões', icon: Clock },
                     { id: 'reports', label: 'Relatórios', icon: FileText },
+                    { id: 'coupons', label: 'Cupons', icon: Tag },
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setAdminTab(tab.id as any)}
+                      onClick={() => {
+                        setAdminTab(tab.id as any);
+                        setSelectedAdminUser(null);
+                      }}
                       className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 text-sm font-medium tracking-wide ${
                         adminTab === tab.id 
                           ? 'bg-gold-main text-black shadow-lg shadow-gold-main/20' 
@@ -2575,242 +3302,77 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                 {/* Main Content Area */}
                 <main className="flex-1">
                   {adminTab === 'dashboard' && (
-                    <div className="space-y-12">
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                        {[
-                          { label: 'Total Usuários', value: adminStats.usersCount, icon: Users },
-                          { label: 'Mapeamentos', value: adminStats.mappingsCount, icon: BarChart3 },
-                          { label: 'Solicitações', value: adminStats.requestsCount, icon: MessageCircle },
-                          { label: 'Receita Est.', value: `R$ ${adminStats.revenue}`, icon: Package },
-                          { label: 'Usuários Ativos', value: adminStats.activeUsers, icon: ShieldCheck },
-                        ].map((stat, i) => (
-                          <div key={i} className="glass-card p-8 border-gold-main/10">
-                            <stat.icon size={20} className="text-gold-main/30 mb-6" />
-                            <p className="text-[10px] uppercase tracking-widest text-white/20 mb-2">{stat.label}</p>
-                            <p className="serif text-3xl text-gold-light">{stat.value}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="glass-card p-6 md:p-10">
-                        <h3 className="serif text-2xl text-gold-light mb-8">Atividade Recente</h3>
-                        <div className="space-y-4">
-                          {adminUsers.slice(0, 5).map((u, i) => (
-                            <div key={i} className="flex items-center justify-between p-4 border-b border-white/5 last:border-0">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gold-main/40">
-                                  <UserIcon size={18} />
-                                </div>
-                                <div>
-                                  <p className="text-gold-light text-sm font-medium">{u.email}</p>
-                                  <p className="text-[10px] text-white/20 uppercase tracking-widest">Novo Usuário</p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] text-white/20">Recente</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    <AdminDashboardTab 
+                      stats={adminStats} 
+                      users={adminUsers} 
+                      onTestMapeamento={() => showPage('mapeamento_form')}
+                      onSimulatePurchase={async () => {
+                        if (user) {
+                          try {
+                            await updateDoc(doc(db, 'users', user.uid), {
+                              paidStatus: true,
+                              updatedAt: new Date().toISOString()
+                            });
+                            await refreshAccess();
+                            alert("Compra simulada com sucesso! Acesso liberado.");
+                          } catch (error) {
+                            console.error("Error simulating purchase:", error);
+                            alert("Erro ao simular compra.");
+                          }
+                        }
+                      }}
+                    />
                   )}
 
                   {adminTab === 'users' && (
-                    <div className="glass-card p-6 md:p-10">
-                      <div className="flex justify-between items-center mb-10">
-                        <h3 className="serif text-2xl text-gold-light">Gestão de Usuários</h3>
-                        <div className="flex gap-4">
-                          <input type="text" placeholder="Buscar usuário..." className="input py-2 px-4 text-xs" />
-                        </div>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-white/20">
-                              <th className="pb-6 font-bold">Usuário</th>
-                              <th className="pb-6 font-bold">Status</th>
-                              <th className="pb-6 font-bold">Mapeamentos</th>
-                              <th className="pb-6 font-bold text-right">Ações</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-sm">
-                            {adminUsers.map((u, i) => (
-                              <tr key={i} className="border-b border-white/5 last:border-0">
-                                <td className="py-6">
-                                  <p className="text-gold-light font-medium">{u.email}</p>
-                                  <p className="text-[10px] text-white/20">{u.id}</p>
-                                </td>
-                                <td className="py-6">
-                                  <span className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold ${u.paidStatus ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
-                                    {u.paidStatus ? 'Ativo' : 'Inativo'}
-                                  </span>
-                                </td>
-                                <td className="py-6 text-white/40">
-                                  {adminMappings.filter(m => m.userId === u.id).length}
-                                </td>
-                                <td className="py-6 text-right">
-                                  <button className="text-gold-main/40 hover:text-gold-main transition-colors text-[10px] uppercase tracking-widest font-bold">Ver Detalhes</button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                    selectedAdminUser ? (
+                      <AdminUserDetailsView 
+                        user={selectedAdminUser} 
+                        mappings={adminMappings} 
+                        diagnosticos={adminDiagnosticos}
+                        requests={adminRequests} 
+                        onBack={() => setSelectedAdminUser(null)} 
+                      />
+                    ) : (
+                      <AdminUsersTab 
+                        users={adminUsers} 
+                        mappings={adminMappings} 
+                        onSelectUser={setSelectedAdminUser} 
+                      />
+                    )
                   )}
 
                   {adminTab === 'mappings' && (
-                    <div className="glass-card p-6 md:p-10">
-                      <h3 className="serif text-2xl text-gold-light mb-10">Histórico de Mapeamentos</h3>
-                      <div className="space-y-4">
-                        {adminMappings.map((m, i) => (
-                          <div key={i} className="p-6 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-gold-main/20 transition-all">
-                            <div className="flex items-center gap-6">
-                              <div className="w-12 h-12 rounded-full bg-gold-main/5 flex items-center justify-center text-gold-main/40">
-                                <BarChart3 size={20} />
-                              </div>
-                              <div>
-                                <h4 className="serif text-lg text-gold-light">{m.arquetipo}</h4>
-                                <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">
-                                  {m.userEmail} • {new Date(m.createdAt).toLocaleDateString('pt-BR')}
-                                </p>
-                              </div>
-                            </div>
-                            <button className="p-3 text-gold-main/20 hover:text-gold-main transition-colors">
-                              <ChevronRight size={18} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <AdminMappingsTab mappings={adminMappings} />
                   )}
 
                   {adminTab === 'clube' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-                      <div className="lg:col-span-1">
-                        <div className="glass-card p-8">
-                          <h3 className="serif text-2xl text-gold-light mb-8 flex items-center gap-3">
-                            <Plus size={20} className="text-gold-main" />
-                            Novo Áudio
-                          </h3>
-                          <div className="space-y-6">
-                            <div className="flex flex-col gap-2">
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">Título</label>
-                              <input 
-                                type="text" 
-                                className="input"
-                                value={adminMeditationData.title}
-                                onChange={(e) => setAdminMeditationData({...adminMeditationData, title: e.target.value})}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">Duração</label>
-                              <input 
-                                type="text" 
-                                className="input"
-                                value={adminMeditationData.duration}
-                                onChange={(e) => setAdminMeditationData({...adminMeditationData, duration: e.target.value})}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">URL MP3</label>
-                              <input 
-                                type="text" 
-                                className="input"
-                                value={adminMeditationData.url}
-                                onChange={(e) => setAdminMeditationData({...adminMeditationData, url: e.target.value})}
-                              />
-                            </div>
-                            <button 
-                              onClick={() => {
-                                if (adminMeditationData.title && adminMeditationData.url) {
-                                  const newItem = { id: meditationList.length + 1, ...adminMeditationData };
-                                  setMeditationList([...meditationList, newItem]);
-                                  setAdminMeditationData({ title: '', description: '', duration: '', url: '' });
-                                }
-                              }}
-                              className="button w-full flex items-center justify-center gap-3"
-                            >
-                              <Upload size={18} />
-                              Publicar
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="lg:col-span-2">
-                        <div className="glass-card p-8">
-                          <h3 className="serif text-2xl text-gold-light mb-8">Conteúdo Ativo</h3>
-                          <div className="space-y-4">
-                            {meditationList.map((item) => (
-                              <div key={item.id} className="p-6 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-gold-main/30 transition-all">
-                                <div className="flex items-center gap-6">
-                                  <div className="w-12 h-12 rounded-full bg-gold-main/5 flex items-center justify-center text-gold-main/40">
-                                    <Music size={20} />
-                                  </div>
-                                  <div>
-                                    <h4 className="serif text-lg text-gold-light">{item.title}</h4>
-                                    <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">{item.duration} • Clube Clarear</p>
-                                  </div>
-                                </div>
-                                <button 
-                                  onClick={() => setMeditationList(meditationList.filter(m => m.id !== item.id))}
-                                  className="p-3 text-white/10 hover:text-red-400/60 transition-colors"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <AdminClubeTab 
+                      meditationData={adminMeditationData}
+                      setMeditationData={setAdminMeditationData}
+                      meditationList={meditationList}
+                      setMeditationList={setMeditationList}
+                    />
                   )}
 
-                  {adminTab === 'requests' && (
-                    <div className="glass-card p-6 md:p-10">
-                      <h3 className="serif text-2xl text-gold-light mb-10">Solicitações de Reprogramação</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-white/20">
-                              <th className="pb-6 font-bold">Usuário</th>
-                              <th className="pb-6 font-bold">Produto</th>
-                              <th className="pb-6 font-bold">Objetivo</th>
-                              <th className="pb-6 font-bold">Status</th>
-                              <th className="pb-6 font-bold text-right">Data</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-sm">
-                            {adminRequests.map((r, i) => (
-                              <tr key={i} className="border-b border-white/5 last:border-0">
-                                <td className="py-6">
-                                  <p className="text-gold-light font-medium">{adminUsers.find(u => u.id === r.userId)?.email || r.userId}</p>
-                                </td>
-                                <td className="py-6 text-white/40">{r.productName}</td>
-                                <td className="py-6 text-white/40 max-w-xs truncate">{r.objetivo}</td>
-                                <td className="py-6">
-                                  <span className={`px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold ${r.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-gold-main/10 text-gold-main'}`}>
-                                    {r.status === 'completed' ? 'Concluído' : 'Pendente'}
-                                  </span>
-                                </td>
-                                <td className="py-6 text-right text-white/20">
-                                  {new Date(r.createdAt).toLocaleDateString('pt-BR')}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                  {adminTab === 'products' && (
+                    <AdminProductsTab />
                   )}
 
-                  {(adminTab === 'products' || adminTab === 'sessions' || adminTab === 'reports') && (
-                    <div className="glass-card p-6 md:p-10 md:p-20 text-center">
-                      <div className="w-20 h-20 rounded-full bg-gold-main/5 flex items-center justify-center mx-auto mb-8 text-gold-main/20">
-                        <Settings size={40} />
-                      </div>
-                      <h3 className="serif text-3xl text-gold-light mb-4">Em Desenvolvimento</h3>
-                      <p className="text-white/30 font-light italic">Esta seção do painel administrativo está sendo estruturada.</p>
-                    </div>
+                  {adminTab === 'sessions' && (
+                    <AdminSessionsTab />
+                  )}
+
+                  {adminTab === 'reports' && (
+                    <AdminReportsTab />
+                  )}
+
+                  {(adminTab === 'requests') && (
+                    <AdminRequestsTab requests={adminRequests} users={adminUsers} />
+                  )}
+
+                  {adminTab === 'coupons' && (
+                    <AdminCouponsTab coupons={adminCoupons} onRefresh={refreshAdminData} />
                   )}
                 </main>
               </div>
@@ -2875,14 +3437,7 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                             onChange={(e) => setAuthData({...authData, password: e.target.value})}
                           />
                         </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <button 
-                            type="button"
-                            onClick={() => setAuthData({ name: 'Usuário Teste', email: `teste_${Date.now()}@exemplo.com`, password: 'password123', whatsapp: '(11) 99999-9999' })}
-                            className="text-emerald-400/40 text-[9px] hover:text-emerald-400 transition-colors text-left font-bold uppercase tracking-widest"
-                          >
-                            Preencher Dados de Teste
-                          </button>
+                        <div className="flex justify-end items-center mt-2">
                           <button 
                             type="button"
                             onClick={() => showPage('auth')}
@@ -2905,8 +3460,8 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                   <div className="glass-card p-6 md:p-10">
                     <h3 className="text-gold-main/40 font-bold tracking-[0.3em] uppercase text-[10px] mb-8">Pagamento</h3>
                     <div className="p-6 md:p-10 border border-dashed border-gold-main/10 rounded-3xl text-center bg-white/[0.01]">
-                      <p className="text-gold-main/40 text-xs italic font-medium mb-2">Ambiente de Teste Ativo</p>
-                      <p className="text-white/20 text-[10px] font-light">Os pagamentos serão processados em modo de teste (Stripe Sandbox).</p>
+                      <p className="text-gold-main/40 text-xs italic font-medium mb-2">Pagamento Seguro</p>
+                      <p className="text-white/20 text-[10px] font-light">Sua transação é protegida com criptografia de ponta a ponta via Stripe.</p>
                     </div>
                   </div>
                 </div>
@@ -2922,7 +3477,41 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                     </div>
                     <div className="flex justify-between items-end pt-10 border-t border-white/5">
                       <span className="text-white/20 text-[10px] uppercase tracking-widest font-bold">Total</span>
-                      <span className="price">{selectedProduct?.price || 'R$ --'}</span>
+                      <div className="text-right">
+                        {appliedCoupon && (
+                          <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">
+                            -{appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.value}%` : `R$ ${appliedCoupon.value}`} OFF
+                          </div>
+                        )}
+                        <span className="price">
+                          {appliedCoupon ? `R$ ${Math.max(0, (parseInt(selectedProduct?.price.replace(/\D/g, '') || '0') * (appliedCoupon.discountType === 'percentage' ? (1 - appliedCoupon.value / 100) : 1) - (appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0))).toFixed(0)}` : (selectedProduct?.price || 'R$ --')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Coupon Section */}
+                    <div className="mt-8 pt-8 border-t border-white/5">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">Cupom de Desconto</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="CÓDIGO" 
+                            className="input flex-1 py-2 text-xs"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          />
+                          <button 
+                            onClick={applyCoupon}
+                            disabled={isApplyingCoupon || !couponCode.trim()}
+                            className="px-4 py-2 bg-gold-main/10 hover:bg-gold-main text-gold-main hover:text-black rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
+                          >
+                            {isApplyingCoupon ? '...' : 'Aplicar'}
+                          </button>
+                        </div>
+                        {couponError && <p className="text-red-400/60 text-[9px] mt-1 italic">{couponError}</p>}
+                        {appliedCoupon && <p className="text-emerald-400/60 text-[9px] mt-1 italic">Cupom {appliedCoupon.code} aplicado com sucesso!</p>}
+                      </div>
                     </div>
                     
                     {authError && (
@@ -2954,14 +3543,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                             className="button w-full disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isProcessingPayment ? 'Processando...' : 'Ativar Agora'}
-                          </button>
-                          
-                          <button 
-                            onClick={handleTestActivation}
-                            disabled={isProcessingPayment}
-                            className="text-emerald-400/40 text-[9px] hover:text-emerald-400 transition-colors font-bold uppercase tracking-widest text-center py-2"
-                          >
-                            Ativar Modo Teste (Pular Pagamento)
                           </button>
                         </>
                       )}
@@ -3076,10 +3657,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Mergulho Interno</span>
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-5xl text-gold-light mb-8">Diagnóstico POSIÇÃO</h2>
                 
@@ -3108,10 +3685,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
             >
               <div className="glass-card border-gold-main/10 bg-white/[0.01]">
                 <div className="flex justify-center mb-8">
-                  <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Modo Teste</span>
-                  </div>
                 </div>
                 <h2 className="serif text-4xl text-gold-light mb-8">Antes de começar</h2>
                 <p className="text-white/40 mb-12 leading-relaxed font-light">
@@ -3150,9 +3723,7 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-emerald-400/40 text-[8px] uppercase tracking-widest font-bold bg-emerald-400/5 px-2 py-1 rounded-full border border-emerald-400/10">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span>Teste</span>
+                <div className="flex items-center justify-center py-4">
                 </div>
               </div>
 
@@ -3191,10 +3762,6 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
                   <div className="w-2 h-2 rounded-full bg-gold-main" />
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10">
-                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span>Modo Teste Ativo</span>
-              </div>
               <div className="space-y-4">
                 <h3 className="serif text-3xl text-gold-light">Tecendo sua análise</h3>
                 <p className="text-white/30 text-sm font-light tracking-widest uppercase">
@@ -3210,22 +3777,62 @@ FORMATO: Texto organizado, claro, fluido e humano em Markdown.`,
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="animate-screen text-center max-w-2xl mx-auto"
+              className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="glass-card p-6 md:p-12 border-gold-main/20 bg-gold-main/[0.01]">
-                <div className="flex justify-center mb-8">
-                  <div className="flex items-center gap-3 text-emerald-400/40 text-[9px] uppercase tracking-widest font-bold bg-emerald-400/5 px-3 py-1.5 rounded-full border border-emerald-400/10">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span>Modo Teste Ativo</span>
+                <h2 className="serif text-5xl text-gold-light mb-12 text-center">Seu Diagnóstico</h2>
+                
+                {selectedArcano && (
+                  <div className="space-y-10 mb-12">
+                    <div className="flex flex-col items-center text-center pb-10 border-b border-white/5">
+                      <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] mb-4 block font-bold">🃏 Seu arquétipo atual</span>
+                      <h3 className="serif text-4xl text-gold-main">{selectedArcano.arcano}</h3>
+                    </div>
+
+                    <div className="grid gap-8">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-gold-main/60 text-[10px] uppercase tracking-widest font-bold">
+                          <div className="w-1 h-1 rounded-full bg-gold-main" />
+                          🧠 Sombra ativa
+                        </div>
+                        <p className="text-white/60 font-light leading-relaxed capitalize">
+                          {selectedArcano.sombra.join(', ').replace(/_/g, ' ')}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-gold-main/60 text-[10px] uppercase tracking-widest font-bold">
+                          <div className="w-1 h-1 rounded-full bg-gold-main" />
+                          🔮 Caminhos possíveis
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedArcano.evolucao.map((ev, i) => (
+                            <span key={i} className="px-3 py-1 rounded-full bg-gold-main/5 border border-gold-main/10 text-gold-light/80 text-[10px] uppercase tracking-wider">
+                              {ev}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-gold-main/60 text-[10px] uppercase tracking-widest font-bold">
+                          <div className="w-1 h-1 rounded-full bg-gold-main" />
+                          🌿 Direção
+                        </div>
+                        <p className="text-gold-light/90 font-medium leading-relaxed italic">
+                          "{selectedArcano.direcao}"
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <h2 className="serif text-5xl text-gold-light mb-8">Obrigada por confiar</h2>
-                <div className="space-y-6 text-white/40 font-light leading-relaxed mb-12">
-                  <p className="text-gold-main/80 font-medium text-lg">{mapeamentoResult}</p>
+                )}
+
+                <div className="space-y-6 text-white/40 font-light leading-relaxed mb-12 text-center pt-6 border-t border-white/5">
                   <p>Suas respostas revelam padrões importantes sobre a forma como você tem ocupado seu lugar neste momento.</p>
                   <p>Vou analisar seu diagnóstico com profundidade e enviar um áudio personalizado para o seu WhatsApp.</p>
                   <p className="text-gold-main/60 italic">Prazo médio: até 48h.</p>
                 </div>
+                
                 <button 
                   onClick={() => navigate('/')}
                   className="button w-full"
