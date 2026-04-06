@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 interface UserAccess {
   user_id: string;
   diagnostico_comprado: boolean;
+  mappingCredits: number;
   clube_ativo: boolean;
   reprogramacao_pessoal_comprada: boolean;
   reprogramar_eu_comprado: boolean;
@@ -38,6 +39,7 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAccess({
         user_id: "error",
         diagnostico_comprado: false,
+        mappingCredits: 0,
         clube_ativo: false,
         reprogramacao_pessoal_comprada: false,
         reprogramar_eu_comprado: false,

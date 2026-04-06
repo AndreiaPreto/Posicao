@@ -18,7 +18,8 @@ import {
   signInWithPopup,
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { jsPDF } from 'jspdf';
 import { useAccess } from '../context/AccessContext';
 import { LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight, Tag, X, Check } from 'lucide-react';
 
@@ -1081,6 +1082,7 @@ const Diagnostico = () => {
   const [mapeamentoAnswers, setMapeamentoAnswers] = useState<any[]>([]);
   const [currentMapeamentoStep, setCurrentMapeamentoStep] = useState(0);
   const [mapeamentoResult, setMapeamentoResult] = useState<string | null>(null);
+  const [currentFlorais, setCurrentFlorais] = useState<string>('');
   const [selectedArcano, setSelectedArcano] = useState<ArcanoData | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [selectedMapping, setSelectedMapping] = useState<any | null>(null);
@@ -1272,6 +1274,7 @@ const Diagnostico = () => {
                 whatsapp: data.whatsapp || '',
                 role: 'user',
                 paidStatus: true,
+                mappingCredits: increment(product.name === 'Mapeamento Emocional Floral' ? 1 : 0),
                 clube_ativo: product.name.includes('Clube'),
                 lastPurchase: product.name,
                 updatedAt: new Date().toISOString()
@@ -1396,9 +1399,50 @@ const Diagnostico = () => {
     }
   };
 
+  const generatePrescriptionPDF = (userName: string, florais: string) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(212, 175, 55); // Gold color
+    doc.text("RECEITA FLORAL", 105, 40, { align: "center" });
+    
+    doc.setDrawColor(212, 175, 55);
+    doc.setLineWidth(0.5);
+    doc.line(40, 45, 170, 45);
+    
+    // Content
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(60, 60, 60);
+    
+    doc.text(`Cliente: ${userName}`, 20, 70);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 80);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Fórmula Recomendada:", 20, 100);
+    
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(14);
+    doc.text(florais, 20, 115, { maxWidth: 170 });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Este é um mapeamento vibracional e não substitui acompanhamento médico.", 105, 280, { align: "center" });
+    
+    doc.save(`Receita_Floral_${userName.replace(/\s+/g, '_')}.pdf`);
+  };
+
   const handleLogout = () => {
     signOut(auth);
     setPage('home');
+    setUserData(null);
+    setUser(null);
+    setIsAdmin(false);
+    setHistory([]);
+    setMapeamentoResult(null);
+    setSelectedArcano(null);
   };
 
   const toggleAudio = (id: number) => {
@@ -1456,6 +1500,11 @@ const Diagnostico = () => {
 
     if (newPage === 'admin_dashboard' && !isAdmin) {
       setPage('home');
+      return;
+    }
+
+    if (newPage === 'mapeamento_form' && !isAdmin && (!access?.mappingCredits || access.mappingCredits <= 0)) {
+      setPage('mapeamento_intro');
       return;
     }
 
@@ -2079,13 +2128,24 @@ const Diagnostico = () => {
                 </div>
                 <div className="text-center space-y-4">
                   <div className="text-gold-main text-3xl serif mb-8">R$ 9,00</div>
-                  {access?.diagnostico_comprado ? (
-                    <button 
-                      onClick={() => showPage('mapeamento_form')}
-                      className="button w-full bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
-                    >
-                      ✨ Iniciar meu Mapeamento
-                    </button>
+                  {(isAdmin || (access?.mappingCredits && access.mappingCredits > 0)) ? (
+                    <div className="mb-6">
+                      {isAdmin ? (
+                        <span className="text-gold-main text-xs uppercase tracking-widest block mb-4">
+                          👑 Modo Administrador: Acesso Liberado
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400 text-xs uppercase tracking-widest block mb-4">
+                          ✨ Você possui {access.mappingCredits} {access.mappingCredits === 1 ? 'crédito' : 'créditos'}
+                        </span>
+                      )}
+                      <button 
+                        onClick={() => showPage('mapeamento_form')}
+                        className="button w-full bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                      >
+                        ✨ Iniciar meu Mapeamento
+                      </button>
+                    </div>
                   ) : (
                     <button 
                       onClick={() => {
@@ -2273,6 +2333,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
 
                             const arcanoData = ARCANOS_MATRIZ.find(a => a.arcano.toLowerCase() === arcanoName.toLowerCase()) || ARCANOS_MATRIZ[0];
                             setSelectedArcano(arcanoData);
+                            setCurrentFlorais(floraisList);
 
                             setMapeamentoResult(resultText);
                             
@@ -2309,6 +2370,14 @@ ESTRUTURA DA RESPOSTA (Markdown):
                                 const querySnapshot = await getDocs(q);
                                 const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                                 setHistory(docs);
+
+                                // Decrement mapping credits
+                                if (!isAdmin) {
+                                  await updateDoc(doc(db, 'users', user.uid), {
+                                    mappingCredits: increment(-1)
+                                  });
+                                  refreshAccess(user.uid);
+                                }
                               } catch (error) {
                                 console.error("Firestore save error:", error);
                                 // We don't throw here to still show the result to the user
@@ -2436,6 +2505,12 @@ ESTRUTURA DA RESPOSTA (Markdown):
                       className="button bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                     >
                       Ver meu histórico completo
+                    </button>
+                    <button 
+                      onClick={() => generatePrescriptionPDF(userData?.name || user?.displayName || 'Cliente', currentFlorais)}
+                      className="button bg-gold-main/20 border-gold-main/40 text-gold-main hover:bg-gold-main/30 flex items-center gap-2 justify-center"
+                    >
+                      <FileText size={18} /> Baixar Receita (PDF)
                     </button>
                   </div>
                 </div>
@@ -3118,12 +3193,18 @@ ESTRUTURA DA RESPOSTA (Markdown):
                     </div>
                   </div>
 
-                  <div className="mt-16 pt-12 border-t border-gold-main/10 text-center">
+                  <div className="mt-16 pt-12 border-t border-gold-main/10 flex flex-col md:flex-row gap-4 justify-center">
                     <button 
                       onClick={() => showPage('mapeamento_intro')}
                       className="button"
                     >
                       Refazer Mapeamento
+                    </button>
+                    <button 
+                      onClick={() => generatePrescriptionPDF(userData?.name || user?.displayName || 'Cliente', selectedMapping.florais)}
+                      className="button bg-gold-main/20 border-gold-main/40 text-gold-main hover:bg-gold-main/30 flex items-center gap-2 justify-center"
+                    >
+                      <FileText size={18} /> Baixar Receita (PDF)
                     </button>
                   </div>
                 </div>

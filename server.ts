@@ -102,6 +102,7 @@ async function startServer() {
           if (firebaseUid) {
             await db.collection("users").doc(firebaseUid).update({
               paidStatus: true,
+              mappingCredits: admin.firestore.FieldValue.increment(1),
               lastPaymentAt: admin.firestore.FieldValue.serverTimestamp(),
             });
           }
@@ -223,9 +224,24 @@ async function startServer() {
       const userDoc = await db.collection("users").doc(uid as string).get();
       if (userDoc.exists) {
         const userData = userDoc.data();
+        let isAdmin = userData?.role === 'admin';
+        
+        // If not admin in DB, check email
+        if (!isAdmin) {
+          try {
+            const userRecord = await admin.auth().getUser(uid as string);
+            if (userRecord.email === 'andreiapreto@gmail.com') {
+              isAdmin = true;
+            }
+          } catch (e) {
+            console.error("Error fetching user record:", e);
+          }
+        }
+
         return res.json({
           user_id: uid,
-          diagnostico_comprado: userData?.paidStatus || false,
+          diagnostico_comprado: isAdmin || (userData?.mappingCredits || 0) > 0,
+          mappingCredits: isAdmin ? 999 : (userData?.mappingCredits || 0),
           clube_ativo: userData?.clube_ativo || false,
           reprogramacao_pessoal_comprada: userData?.reprogramacao_pessoal_comprada || false,
           reprogramar_eu_comprado: userData?.reprogramar_eu_comprado || false,
@@ -235,6 +251,7 @@ async function startServer() {
       res.json({
         user_id: uid,
         diagnostico_comprado: false,
+        mappingCredits: 0,
         clube_ativo: false,
         reprogramacao_pessoal_comprada: false,
         reprogramar_eu_comprado: false,
