@@ -18,7 +18,7 @@ import {
   signInWithPopup,
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp, updateDoc, increment, addDoc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import { useAccess } from '../context/AccessContext';
 import { LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight, Tag, X, Check } from 'lucide-react';
@@ -28,6 +28,7 @@ interface AppUser {
   email?: string;
   paidStatus?: boolean;
   name?: string;
+  birthDate?: string;
   whatsapp?: string;
   role?: string;
 }
@@ -851,24 +852,29 @@ const AdminReportsTab = () => (
   </div>
 );
 
-const AdminCouponsTab = ({ coupons, onRefresh }: { coupons: any[], onRefresh: () => void }) => {
-  const [newCoupon, setNewCoupon] = useState({ code: '', discountType: 'percentage', value: 0 });
+const AdminCouponsTab = ({ coupons, onRefresh, setNotification }: { coupons: any[], onRefresh: () => void, setNotification: (n: any) => void }) => {
+  const [newCoupon, setNewCoupon] = useState({ code: '', discountType: 'percentage', value: '' as any });
   const [isCreating, setIsCreating] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleCreate = async () => {
-    if (!newCoupon.code || newCoupon.value <= 0) return;
+    const val = parseFloat(newCoupon.value);
+    if (!newCoupon.code || isNaN(val) || val <= 0) return;
     setIsCreating(true);
     try {
-      await setDoc(doc(collection(db, 'coupons')), {
+      await addDoc(collection(db, 'coupons'), {
         ...newCoupon,
+        value: val,
         code: newCoupon.code.toUpperCase(),
         active: true,
         createdAt: new Date().toISOString()
       });
-      setNewCoupon({ code: '', discountType: 'percentage', value: 0 });
+      setNewCoupon({ code: '', discountType: 'percentage', value: '' });
       onRefresh();
+      setNotification({ message: "Cupom criado com sucesso!", type: 'success' });
     } catch (error) {
-      console.error("Error creating coupon:", error);
+      handleFirestoreError(error, OperationType.CREATE, 'coupons');
+      setNotification({ message: "Erro ao criar cupom.", type: 'error' });
     } finally {
       setIsCreating(false);
     }
@@ -876,10 +882,21 @@ const AdminCouponsTab = ({ coupons, onRefresh }: { coupons: any[], onRefresh: ()
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      await setDoc(doc(db, 'coupons', id), { active: !currentStatus }, { merge: true });
+      await updateDoc(doc(db, 'coupons', id), { active: !currentStatus });
       onRefresh();
     } catch (error) {
-      console.error("Error toggling coupon status:", error);
+      handleFirestoreError(error, OperationType.UPDATE, `coupons/${id}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'coupons', id));
+      onRefresh();
+      setNotification({ message: "Cupom excluído com sucesso!", type: 'success' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `coupons/${id}`);
+      setNotification({ message: "Erro ao excluir cupom.", type: 'error' });
     }
   };
 
@@ -895,7 +912,7 @@ const AdminCouponsTab = ({ coupons, onRefresh }: { coupons: any[], onRefresh: ()
             placeholder="EX: POSICAO10" 
             className="input py-2 text-xs"
             value={newCoupon.code}
-            onChange={(e) => setNewCoupon({...newCoupon, code: e.target.value})}
+            onChange={(e) => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})}
           />
         </div>
         <div className="flex flex-col gap-2">
@@ -916,7 +933,7 @@ const AdminCouponsTab = ({ coupons, onRefresh }: { coupons: any[], onRefresh: ()
             placeholder="0" 
             className="input py-2 text-xs"
             value={newCoupon.value}
-            onChange={(e) => setNewCoupon({...newCoupon, value: parseFloat(e.target.value)})}
+            onChange={(e) => setNewCoupon({...newCoupon, value: e.target.value})}
           />
         </div>
         <div className="flex items-end">
@@ -948,12 +965,30 @@ const AdminCouponsTab = ({ coupons, onRefresh }: { coupons: any[], onRefresh: ()
               <span className={`text-[9px] uppercase tracking-widest font-bold px-3 py-1 rounded-full ${c.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                 {c.active ? 'Ativo' : 'Inativo'}
               </span>
-              <button 
-                onClick={() => toggleStatus(c.id, c.active)}
-                className="p-3 text-gold-main/20 hover:text-gold-main transition-colors"
-              >
-                {c.active ? <X size={18} /> : <Check size={18} />}
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => toggleStatus(c.id, c.active)}
+                  className="p-3 text-gold-main/20 hover:text-gold-main transition-colors"
+                  title={c.active ? 'Desativar' : 'Ativar'}
+                >
+                  {c.active ? <X size={18} /> : <Check size={18} />}
+                </button>
+                <button 
+                  onClick={() => {
+                    if (confirmDeleteId === c.id) {
+                      handleDelete(c.id);
+                      setConfirmDeleteId(null);
+                    } else {
+                      setConfirmDeleteId(c.id);
+                    }
+                  }}
+                  onMouseLeave={() => setConfirmDeleteId(null)}
+                  className={`p-3 transition-colors flex items-center gap-2 ${confirmDeleteId === c.id ? 'text-red-400 bg-red-400/10 rounded-xl' : 'text-white/20 hover:text-red-400'}`}
+                  title="Excluir"
+                >
+                  {confirmDeleteId === c.id ? <span className="text-[10px] font-bold uppercase tracking-widest">Confirmar?</span> : <Trash2 size={18} />}
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -974,7 +1009,7 @@ const Diagnostico = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [authData, setAuthData] = useState({ name: '', email: '', password: '', whatsapp: '' });
+  const [authData, setAuthData] = useState({ name: '', email: '', password: '', whatsapp: '', birthDate: '' });
   const [authError, setAuthError] = useState<string | React.ReactNode>(null);
   const [intendedPage, setIntendedPage] = useState<Page | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<{name: string, price: string} | null>(null);
@@ -1008,7 +1043,7 @@ const Diagnostico = () => {
         setCouponError(null);
       }
     } catch (error) {
-      console.error("Error applying coupon:", error);
+      handleFirestoreError(error, OperationType.GET, 'coupons');
       setCouponError('Erro ao validar cupom.');
     } finally {
       setIsApplyingCoupon(false);
@@ -1022,7 +1057,7 @@ const Diagnostico = () => {
     const path = 'reprogramacao_requests';
     try {
       if (user) {
-        await setDoc(doc(collection(db, path)), {
+        await addDoc(collection(db, path), {
           userId: user.uid,
           productName: selectedProduct?.name || 'Reprogramação Pessoal',
           estadoEmocional: reprogramacaoData.estadoEmocional,
@@ -1071,6 +1106,7 @@ const Diagnostico = () => {
   const [adminCoupons, setAdminCoupons] = useState<any[]>([]);
   const [selectedAdminUser, setSelectedAdminUser] = useState<any | null>(null);
   const [meditationList, setMeditationList] = useState(meditations);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const [mapeamentoData, setMapeamentoData] = useState({
     emocao: '',
     padrao: '',
@@ -1153,6 +1189,13 @@ const Diagnostico = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     if (user) {
@@ -1271,6 +1314,7 @@ const Diagnostico = () => {
                 uid: currentUser.uid,
                 name: data.name || currentUser.displayName || 'Usuário',
                 email: data.email || currentUser.email,
+                birthDate: data.birthDate || '',
                 whatsapp: data.whatsapp || '',
                 role: 'user',
                 paidStatus: true,
@@ -1300,11 +1344,11 @@ const Diagnostico = () => {
           } catch (err: any) {
             console.error("❌ Error finalizing payment:", err);
             if (err.code === 'auth/operation-not-allowed') {
-              alert("Erro: O método de login por E-mail/Senha não está ativado no Console do Firebase.");
+              setNotification({ message: "Erro: O método de login por E-mail/Senha não está ativado no Console do Firebase.", type: 'error' });
             } else if (err.code === 'auth/network-request-failed') {
-              alert("Erro de conexão: Verifique bloqueadores de anúncios ou rede. DICA: Tente abrir o app em uma NOVA ABA (ícone no canto superior direito).");
+              setNotification({ message: "Erro de conexão: Verifique bloqueadores de anúncios ou rede.", type: 'error' });
             } else {
-              alert("Erro ao finalizar pagamento: " + (err.message || "Erro desconhecido"));
+              setNotification({ message: "Erro ao finalizar pagamento: " + (err.message || "Erro desconhecido"), type: 'error' });
             }
             setPage('home');
           } finally {
@@ -1328,12 +1372,17 @@ const Diagnostico = () => {
     setAuthError(null);
     try {
       if (authMode === 'signup') {
+        if (!authData.name || !authData.email || !authData.password || !authData.birthDate) {
+          setAuthError('Por favor, preencha todos os campos obrigatórios.');
+          return;
+        }
         const userCredential = await createUserWithEmailAndPassword(auth, authData.email, authData.password);
         try {
           await setDoc(doc(db, 'users', userCredential.user.uid), {
             uid: userCredential.user.uid,
             name: authData.name,
             email: authData.email,
+            birthDate: authData.birthDate,
             whatsapp: authData.whatsapp,
             role: 'user',
             paidStatus: false,
@@ -1373,23 +1422,28 @@ const Diagnostico = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
+        // Check if user exists in Firestore
         try {
-          await setDoc(doc(db, 'users', user.uid), {
-            uid: user.uid,
-            name: user.displayName || 'Usuário Google',
-            email: user.email,
-            whatsapp: '',
-            role: 'user',
-            paidStatus: false,
-            createdAt: new Date().toISOString()
-          });
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (!userDoc.exists()) {
+            try {
+              await setDoc(doc(db, 'users', user.uid), {
+                uid: user.uid,
+                name: user.displayName || 'Usuário Google',
+                email: user.email,
+                birthDate: '',
+                whatsapp: '',
+                role: 'user',
+                paidStatus: false,
+                createdAt: new Date().toISOString()
+              });
+            } catch (error) {
+              handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+            }
+          }
         } catch (error) {
-          handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
         }
-      }
       
       setPage(intendedPage || 'home');
       setIntendedPage(null);
@@ -1603,7 +1657,7 @@ const Diagnostico = () => {
       let currentFirebaseUid = user?.uid;
       
       if (!user) {
-        if (!authData.email || !authData.password || !authData.name) {
+        if (!authData.email || !authData.password || !authData.name || !authData.birthDate) {
           setAuthError('Por favor, preencha todos os campos obrigatórios.');
           setIsProcessingPayment(false);
           return;
@@ -1620,15 +1674,20 @@ const Diagnostico = () => {
           currentFirebaseUid = userCredential.user.uid;
           
           // Pre-create user doc
-          await setDoc(doc(db, 'users', currentFirebaseUid), {
-            uid: currentFirebaseUid,
-            name: authData.name,
-            email: authData.email,
-            whatsapp: authData.whatsapp || '',
-            role: 'user',
-            paidStatus: false,
-            createdAt: new Date().toISOString()
-          }, { merge: true });
+          try {
+            await setDoc(doc(db, 'users', currentFirebaseUid), {
+              uid: currentFirebaseUid,
+              name: authData.name,
+              email: authData.email,
+              birthDate: authData.birthDate,
+              whatsapp: authData.whatsapp || '',
+              role: 'user',
+              paidStatus: false,
+              createdAt: new Date().toISOString()
+            }, { merge: true });
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, `users/${currentFirebaseUid}`);
+          }
         } catch (e: any) {
           if (e.code === 'auth/email-already-in-use') {
             const userCredential = await signInWithEmailAndPassword(auth, authData.email, authData.password);
@@ -1823,6 +1882,30 @@ const Diagnostico = () => {
 
   return (
     <>
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            className={`fixed bottom-10 left-1/2 z-[100] px-6 py-3 rounded-2xl border flex items-center gap-3 shadow-2xl backdrop-blur-xl ${
+              notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+              notification.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+              'bg-gold-main/10 border-gold-main/20 text-gold-main'
+            }`}
+          >
+            {notification.type === 'success' ? <CheckCircle size={18} /> : 
+             notification.type === 'error' ? <X size={18} /> : 
+             <Tag size={18} />}
+            <span className="text-xs uppercase tracking-widest font-bold">{notification.message}</span>
+            <button onClick={() => setNotification(null)} className="ml-4 opacity-40 hover:opacity-100 transition-opacity">
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="atmosphere"></div>
       <div className="relative z-10 min-h-screen">
         {/* User Status Bar */}
@@ -2012,6 +2095,19 @@ const Diagnostico = () => {
                     </div>
                   )}
                   
+                  {authMode === 'signup' && (
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Data de Nascimento</label>
+                      <input 
+                        type="date" 
+                        value={authData.birthDate}
+                        onChange={(e) => setAuthData({...authData, birthDate: e.target.value})}
+                        className="input"
+                        required
+                      />
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-3">
                     <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Email</label>
                     <input 
@@ -2023,20 +2119,6 @@ const Diagnostico = () => {
                       required
                     />
                   </div>
-
-                  {authMode === 'signup' && (
-                    <div className="flex flex-col gap-3">
-                      <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">WhatsApp</label>
-                      <input 
-                        type="tel" 
-                        value={authData.whatsapp}
-                        onChange={(e) => setAuthData({...authData, whatsapp: e.target.value})}
-                        className="input"
-                        placeholder="(00) 00000-0000"
-                        required
-                      />
-                    </div>
-                  )}
 
                   <div className="flex flex-col gap-3">
                     <label className="text-[10px] uppercase tracking-[0.3em] text-gold-main/40 font-bold">Senha</label>
@@ -2127,7 +2209,42 @@ const Diagnostico = () => {
                   ))}
                 </div>
                 <div className="text-center space-y-4">
-                  <div className="text-gold-main text-3xl serif mb-8">R$ 9,00</div>
+                  <div className="text-gold-main text-3xl serif mb-4">
+                    {appliedCoupon ? (
+                      <div className="flex flex-col items-center">
+                        <span className="text-white/20 text-xs line-through">R$ 9,00</span>
+                        <span>R$ {Math.max(0, (9 * (appliedCoupon.discountType === 'percentage' ? (1 - appliedCoupon.value / 100) : 1) - (appliedCoupon.discountType === 'fixed' ? appliedCoupon.value : 0))).toFixed(0)},00</span>
+                      </div>
+                    ) : 'R$ 9,00'}
+                  </div>
+
+                  {/* Coupon Field in Intro */}
+                  {!appliedCoupon && (
+                    <div className="flex gap-2 max-w-xs mx-auto mb-8">
+                      <input 
+                        type="text" 
+                        placeholder="CUPOM" 
+                        className="input flex-1 py-2 text-[10px] uppercase tracking-widest"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      />
+                      <button 
+                        onClick={applyCoupon}
+                        disabled={isApplyingCoupon || !couponCode.trim()}
+                        className="px-4 py-2 bg-gold-main/10 hover:bg-gold-main text-gold-main hover:text-black rounded-xl text-[9px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
+                      >
+                        {isApplyingCoupon ? '...' : 'Aplicar'}
+                      </button>
+                    </div>
+                  )}
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-center gap-2 mb-8 text-emerald-400 text-[10px] uppercase tracking-widest font-bold">
+                      <CheckCircle size={14} /> Cupom {appliedCoupon.code} Aplicado
+                      <button onClick={() => setAppliedCoupon(null)} className="text-white/20 hover:text-white ml-2"><X size={12} /></button>
+                    </div>
+                  )}
+                  {couponError && <p className="text-red-400/60 text-[9px] mb-4 italic">{couponError}</p>}
+
                   {(isAdmin || (access?.mappingCredits && access.mappingCredits > 0)) ? (
                     <div className="mb-6">
                       {isAdmin ? (
@@ -2337,33 +2454,32 @@ ESTRUTURA DA RESPOSTA (Markdown):
 
                             setMapeamentoResult(resultText);
                             
-                            // Save to Firestore
-                            if (user) {
-                              try {
-                                const mappingRef = doc(collection(db, 'mappings'));
-                                await setDoc(mappingRef, {
-                                  userId: user.uid,
-                                  userEmail: user.email,
-                                  type: 'mapeamento_floral',
-                                  arcano: arcanoName,
-                                  answers: newAnswers.map(a => ({
-                                    pergunta_id: a.pergunta_id,
-                                    emocao: a.emocao,
-                                    peso: a.peso
-                                  })),
-                                  // For backward compatibility in admin/history
-                                  emocao: derivedData.emocao,
-                                  padrao: derivedData.padrao,
-                                  defesa: derivedData.defesa,
-                                  ferida: derivedData.ferida,
-                                  desejo: derivedData.desejo,
-                                  arquetipo: arcanoName,
-                                  result: resultText,
-                                  alignmentScore: score,
-                                  florais: floraisList,
-                                  createdAt: new Date().toISOString(),
-                                  phrase: resultText.split('FRASE DE CONSCIÊNCIA')[1]?.split('---')[0]?.replace(/[#*:]/g, '').trim() || ''
-                                });
+                              // Save to Firestore
+                              if (user) {
+                                try {
+                                  await addDoc(collection(db, 'mappings'), {
+                                    userId: user.uid,
+                                    userEmail: user.email,
+                                    type: 'mapeamento_floral',
+                                    arcano: arcanoName,
+                                    answers: newAnswers.map(a => ({
+                                      pergunta_id: a.pergunta_id,
+                                      emocao: a.emocao,
+                                      peso: a.peso
+                                    })),
+                                    // For backward compatibility in admin/history
+                                    emocao: derivedData.emocao,
+                                    padrao: derivedData.padrao,
+                                    defesa: derivedData.defesa,
+                                    ferida: derivedData.ferida,
+                                    desejo: derivedData.desejo,
+                                    arquetipo: arcanoName,
+                                    result: resultText,
+                                    alignmentScore: score,
+                                    florais: floraisList,
+                                    createdAt: new Date().toISOString(),
+                                    phrase: resultText.split('FRASE DE CONSCIÊNCIA')[1]?.split('---')[0]?.replace(/[#*:]/g, '').trim() || ''
+                                  });
 
                                 // Refresh history
                                 const q = query(collection(db, 'mappings'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
@@ -2378,10 +2494,11 @@ ESTRUTURA DA RESPOSTA (Markdown):
                                   });
                                   refreshAccess(user.uid);
                                 }
-                              } catch (error) {
-                                console.error("Firestore save error:", error);
-                                // We don't throw here to still show the result to the user
-                              }
+                                } catch (error) {
+                                  handleFirestoreError(error, OperationType.CREATE, 'mappings');
+                                  console.error("Firestore save error:", error);
+                                  // We don't throw here to still show the result to the user
+                                }
                             }
 
                             setPage('mapeamento_result');
@@ -3395,10 +3512,10 @@ ESTRUTURA DA RESPOSTA (Markdown):
                               updatedAt: new Date().toISOString()
                             });
                             await refreshAccess();
-                            alert("Compra simulada com sucesso! Acesso liberado.");
+                            setNotification({ message: "Compra simulada com sucesso! Acesso liberado.", type: 'success' });
                           } catch (error) {
                             console.error("Error simulating purchase:", error);
-                            alert("Erro ao simular compra.");
+                            setNotification({ message: "Erro ao simular compra.", type: 'error' });
                           }
                         }
                       }}
@@ -3453,7 +3570,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                   )}
 
                   {adminTab === 'coupons' && (
-                    <AdminCouponsTab coupons={adminCoupons} onRefresh={refreshAdminData} />
+                    <AdminCouponsTab coupons={adminCoupons} onRefresh={refreshAdminData} setNotification={setNotification} />
                   )}
                 </main>
               </div>
@@ -3489,6 +3606,16 @@ ESTRUTURA DA RESPOSTA (Markdown):
                           />
                         </div>
                         <div className="flex flex-col gap-2">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">Data de Nascimento</label>
+                          <input 
+                            type="date" 
+                            className="input"
+                            value={authData.birthDate}
+                            onChange={(e) => setAuthData({...authData, birthDate: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
                           <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">E-mail</label>
                           <input 
                             type="email" 
@@ -3496,16 +3623,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                             className="input"
                             value={authData.email}
                             onChange={(e) => setAuthData({...authData, email: e.target.value})}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/20 font-bold">WhatsApp</label>
-                          <input 
-                            type="text" 
-                            placeholder="(00) 00000-0000" 
-                            className="input"
-                            value={authData.whatsapp}
-                            onChange={(e) => setAuthData({...authData, whatsapp: e.target.value})}
+                            required
                           />
                         </div>
                         <div className="flex flex-col gap-2">
