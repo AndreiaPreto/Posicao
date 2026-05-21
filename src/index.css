@@ -1,23 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────
+   POSIÇÃO × Biblioteca — Design Token Update
+   Paleta: fundo quase-preto #080808, dourado
+   refinado #C9A04A / #E6C97A / #8B6812,
+   tipografia DM Sans + Cormorant Garamond
+───────────────────────────────────────── */
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Tipografia */
+  --font-sans:  "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", serif;
-  --font-mono: "JetBrains Mono", monospace;
-  
-  --color-gold-main: #D4AF37; /* Metallic Gold - More vibrant and readable */
-  --color-gold-light: #F9EBC7; /* Lighter and clearer */
-  --color-gold-deep: #996515; /* Golden Brown - Better contrast */
-  --color-deep-black: #050505;
-  --color-glass: rgba(255, 255, 255, 0.02);
+  --font-mono:  "JetBrains Mono", monospace;
+
+  /* Paleta dourada (biblioteca) */
+  --color-gold-main:  #C9A04A;   /* ouro principal   */
+  --color-gold-light: #E6C97A;   /* ouro claro       */
+  --color-gold-deep:  #8B6812;   /* ouro escuro      */
+
+  /* Fundos */
+  --color-deep-black: #080808;   /* fundo base       */
+  --color-bg2:        #101010;   /* superfícies      */
+  --color-bg3:        #181818;   /* cards            */
+  --color-bg4:        #222222;   /* hover/active     */
+
+  /* Glass */
+  --color-glass:        rgba(255, 255, 255, 0.02);
   --color-glass-border: rgba(255, 255, 255, 0.05);
+
+  /* Texto utilitário */
+  --color-text-main: #F2EDE6;
 }
 
+/* ── Base ────────────────────────────────── */
 @layer base {
   body {
-    @apply bg-deep-black text-white font-sans antialiased overflow-x-hidden;
-    background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #050505 100%);
+    @apply bg-deep-black text-text-main font-sans antialiased overflow-x-hidden;
+    background:
+      radial-gradient(ellipse 70% 90% at 85% 50%, rgba(201,160,74,.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 10% 80%, rgba(201,160,74,.03) 0%, transparent 50%),
+      #080808;
     margin: 0;
     padding: 0;
   }
@@ -26,101 +49,156 @@
     @apply font-serif tracking-tight;
     line-height: 1.1;
   }
+
+  /* Scrollbar refinada */
+  ::-webkit-scrollbar        { width: 4px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: #8B6812; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #C9A04A; }
 }
 
+/* ── Atmosphere (partículas de fundo) ──── */
 @layer components {
   .atmosphere {
     @apply fixed inset-0 pointer-events-none z-0 overflow-hidden;
   }
 
-  .atmosphere::before, .atmosphere::after {
+  .atmosphere::before,
+  .atmosphere::after {
     content: '';
     @apply absolute inset-0;
-    background: 
-      radial-gradient(circle at 20% 30%, rgba(197, 160, 40, 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 80% 70%, rgba(197, 160, 40, 0.05) 0%, transparent 50%);
+    background:
+      radial-gradient(circle at 20% 30%, rgba(201,160,74,.07) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(201,160,74,.04) 0%, transparent 50%);
     filter: blur(100px);
     animation: float 20s ease-in-out infinite alternate;
   }
 
   .atmosphere::after {
-    background: radial-gradient(circle at 50% 50%, rgba(197, 160, 40, 0.03) 0%, transparent 60%);
+    background: radial-gradient(circle at 50% 50%, rgba(201,160,74,.025) 0%, transparent 60%);
     animation-delay: -10s;
     animation-duration: 25s;
   }
 
   @keyframes float {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(2%, 2%) scale(1.1); }
+    0%   { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(2%, 2%) scale(1.08); }
   }
 
+  /* ── Glass card ─────────────────────── */
   .glass-card {
     background-color: var(--color-glass);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
     border: 1px solid var(--color-glass-border);
-    border-radius: 40px;
+    border-radius: 16px;          /* era 40px — mais conteúdo e premium */
     padding: 1.5rem;
     @apply md:p-10;
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 24px rgba(0,0,0,.15);
   }
 
   .glass-card:hover {
-    border-color: rgba(197, 160, 40, 0.2);
-    background-color: rgba(255, 255, 255, 0.04);
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    border-color: rgba(201,160,74,.18);
+    background-color: rgba(255,255,255,.035);
+    transform: translateY(-3px);
+    box-shadow:
+      0 16px 40px rgba(0,0,0,.3),
+      0 0 0 1px rgba(201,160,74,.1);
   }
 
+  /* ── Botões ─────────────────────────── */
   .button {
-    @apply bg-gold-main text-deep-black font-semibold px-8 py-4 md:px-12 md:py-5 rounded-full transition-all duration-700 
-           hover:bg-gold-light hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-gold-main/10 text-center
-           uppercase tracking-[0.2em] text-[9px] md:text-[10px] relative overflow-hidden;
+    @apply bg-gold-main text-deep-black font-semibold px-8 py-4
+           md:px-12 md:py-5 rounded-lg
+           transition-all duration-500
+           hover:bg-gold-light hover:scale-[1.01]
+           active:scale-[0.99]
+           shadow-lg
+           text-center uppercase tracking-[0.16em] text-[10px] md:text-[11px]
+           relative overflow-hidden;
+    box-shadow: 0 4px 20px rgba(201,160,74,.15);
   }
 
   .button::after {
     content: '';
-    @apply absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-700;
+    @apply absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-500;
   }
 
-  .button:hover::after {
-    @apply opacity-100;
-  }
+  .button:hover::after { @apply opacity-100; }
 
   .btn-primary {
-    @apply bg-gold-main text-deep-black font-semibold px-8 py-4 md:px-12 md:py-5 rounded-full transition-all duration-700 
-           hover:bg-gold-light hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-gold-main/10 text-center
-           uppercase tracking-[0.2em] text-[9px] md:text-[10px] relative overflow-hidden w-full;
+    @apply bg-gold-main text-deep-black font-semibold px-8 py-4
+           md:px-12 md:py-5 rounded-lg
+           transition-all duration-500
+           hover:bg-gold-light hover:scale-[1.01]
+           active:scale-[0.99]
+           text-center uppercase tracking-[0.16em] text-[10px] md:text-[11px]
+           relative overflow-hidden w-full;
+    box-shadow: 0 4px 20px rgba(201,160,74,.15);
+  }
+
+  .btn-secondary {
+    @apply border border-white/10 text-text-main/70 font-medium px-8 py-4
+           md:px-12 md:py-5 rounded-lg
+           transition-all duration-500
+           hover:bg-white/5 hover:text-text-main
+           text-center uppercase tracking-[0.12em] text-[10px] md:text-[11px]
+           relative overflow-hidden w-full;
   }
 
   .button-outline {
-    @apply border border-gold-main/30 text-gold-main font-semibold px-8 py-4 md:px-12 md:py-5 rounded-full transition-all duration-700 
-           hover:bg-gold-main/5 hover:border-gold-main/60 text-center
-           uppercase tracking-[0.2em] text-[9px] md:text-[10px] backdrop-blur-sm;
+    @apply border border-gold-main/25 text-gold-main font-medium px-8 py-4
+           md:px-12 md:py-5 rounded-lg
+           transition-all duration-500
+           hover:bg-gold-main/6 hover:border-gold-main/50
+           text-center uppercase tracking-[0.14em] text-[10px] md:text-[11px]
+           backdrop-blur-sm;
   }
 
+  /* ── Input ──────────────────────────── */
   .input {
-    @apply w-full bg-white/[0.02] border border-white/5 rounded-2xl px-4 py-3 md:px-6 md:py-4 text-white placeholder:text-white/20 
-           focus:outline-none focus:border-gold-main/30 focus:bg-white/[0.04] transition-all duration-500;
+    @apply w-full bg-white/[0.025] border border-white/[0.06] rounded-xl
+           px-4 py-3 md:px-6 md:py-4
+           text-text-main placeholder:text-white/20
+           focus:outline-none focus:border-gold-main/30 focus:bg-white/[0.04]
+           transition-all duration-400;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
   }
 
+  /* ── Back link ──────────────────────── */
   .back {
-    @apply inline-flex items-center gap-3 text-gold-main/50 hover:text-gold-main cursor-pointer mb-6 md:mb-10 transition-all duration-300 text-[9px] md:text-[10px] uppercase tracking-[0.3em] font-bold;
+    @apply inline-flex items-center gap-3
+           text-gold-main/45 hover:text-gold-main
+           cursor-pointer mb-6 md:mb-10
+           transition-all duration-300
+           text-[10px] md:text-[11px] uppercase tracking-[0.28em] font-semibold;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 4px;
+  /* ── Legacy card (Clube.tsx, Membros.tsx) */
+  .card {
+    background-color: var(--color-glass);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid var(--color-glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    @apply md:p-10;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-bottom: 1.5rem;
+    @apply md:mb-8;
   }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+
+  .card.primary {
+    @apply border-gold-main/28 bg-gold-main/[0.012];
   }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gold-main/10 rounded-full hover:bg-gold-main/30 transition-colors;
-  }
+
+  .card h2  { @apply text-2xl text-gold-light mb-2; }
+  .card p   { @apply text-white/50 text-sm leading-relaxed mb-6; }
 }
 
+/* ── Layout helpers ───────────────────── */
 .animate-screen {
   @apply relative z-10 max-w-3xl mx-auto px-6 py-10 md:px-8 md:py-16;
 }
@@ -133,23 +211,7 @@
   @apply grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mt-10 md:mt-16;
 }
 
-/* Legacy support for existing classes if needed, but we'll migrate them */
-.card { 
-  background-color: var(--color-glass);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
-  border: 1px solid var(--color-glass-border);
-  border-radius: 40px;
-  padding: 1.5rem;
-  @apply md:p-10;
-  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-bottom: 2rem;
-  @apply md:mb-10;
-}
-.card.primary { @apply border-gold-main/30 bg-gold-main/[0.01]; }
-.card h2 { @apply text-3xl text-gold-light mb-3; }
-.card p { @apply text-white/50 text-sm leading-relaxed mb-8; }
-
+/* ── Markdown body ────────────────────── */
 .markdown-body h1 {
   @apply font-serif text-4xl text-gold-light mb-8 mt-12;
 }
@@ -159,25 +221,19 @@
 }
 
 .markdown-body h3 {
-  @apply text-gold-main uppercase tracking-widest text-xs font-bold mb-4 mt-8;
+  @apply text-gold-main uppercase tracking-widest text-xs font-semibold mb-4 mt-8;
 }
 
 .markdown-body p {
-  @apply text-white/70 leading-relaxed mb-4 font-light;
+  @apply text-white/65 leading-relaxed mb-4 font-light;
 }
 
 .markdown-body ul {
-  @apply list-disc list-inside mb-6 space-y-2 text-white/60 font-light;
+  @apply list-disc list-inside mb-6 space-y-2 text-white/55 font-light;
 }
 
-.markdown-body li {
-  @apply leading-relaxed;
-}
+.markdown-body li  { @apply leading-relaxed; }
 
-.markdown-body strong {
-  @apply text-gold-main font-medium;
-}
+.markdown-body strong { @apply text-gold-main font-medium; }
 
-.markdown-body hr {
-  @apply border-gold-main/10 my-12;
-}
+.markdown-body hr { @apply border-gold-main/10 my-12; }

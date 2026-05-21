@@ -21,7 +21,7 @@ import {
 import { doc, setDoc, getDoc, collection, query, where, getDocs, orderBy, getDocFromServer, serverTimestamp, updateDoc, increment, addDoc, deleteDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import { useAccess } from '../context/AccessContext';
-import { LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight, Tag, X, Check } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight, Tag, X, Check, CreditCard } from 'lucide-react';
 
 interface AppUser {
   id: string;
@@ -646,6 +646,7 @@ const AdminClubeTab = ({
             />
           </div>
           <button 
+            type="button"
             onClick={() => {
               if (meditationData.title && meditationData.url) {
                 const newItem = { id: meditationList.length + 1, ...meditationData };
@@ -973,6 +974,7 @@ const AdminCouponsTab = ({ coupons, onRefresh, setNotification }: { coupons: any
         </div>
         <div className="flex items-end">
           <button 
+            type="button"
             onClick={handleCreate}
             disabled={isCreating}
             className="button w-full py-2.5 text-xs"
@@ -1085,8 +1087,8 @@ const Diagnostico = () => {
         setCouponError(null);
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, 'coupons');
-      setCouponError('Erro ao validar cupom.');
+      console.error('Erro ao validar cupom:', error);
+      setCouponError('Erro ao validar cupom. Verifique sua conexão.');
     } finally {
       setIsApplyingCoupon(false);
     }
@@ -1199,6 +1201,7 @@ const Diagnostico = () => {
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   const [isFinalizingPayment, setIsFinalizingPayment] = useState(false);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const finalizingRef = React.useRef(false);
 
   const calculateStatus = (createdAt: string) => {
@@ -1267,6 +1270,7 @@ const Diagnostico = () => {
       } catch (error) {
         console.error("Error in onAuthStateChanged:", error);
       } finally {
+        setIsAuthInitialized(true);
         // Only set loading to false if we're not in the middle of finalizing a payment
         const params = new URLSearchParams(window.location.search);
         const isPaymentSuccess = params.get('payment_success') === 'true';
@@ -1345,7 +1349,10 @@ const Diagnostico = () => {
     const isPaymentSuccess = params.get('payment_success') === 'true';
     const buyProduct = params.get('buy');
     
-    if (buyProduct && user && !loading) {
+    // Wait for auth to be initialized before making decisions based on user state
+    if (!isAuthInitialized) return;
+
+    if (buyProduct && user) {
       // Clear the param
       window.history.replaceState({}, document.title, window.location.pathname);
       
@@ -1417,7 +1424,7 @@ const Diagnostico = () => {
               localStorage.removeItem('pending_product');
               
               console.log("🔄 Refreshing access...");
-              await refreshAccess();
+              await refreshAccess(currentUser.uid);
               
               console.log("🚀 Redirecting to correct page...");
               if (product.name === 'Mapeamento Emocional Floral') {
@@ -1453,7 +1460,7 @@ const Diagnostico = () => {
       };
       finalizePayment();
     }
-  }, [user]);
+  }, [user, loading, isAuthInitialized]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1667,6 +1674,7 @@ const Diagnostico = () => {
       
       if (!user) {
         // If no user, we need them to sign up first
+        setIntendedPage('checkout');
         setPage('auth');
         setIsProcessingPayment(false);
         return;
@@ -2311,33 +2319,6 @@ const Diagnostico = () => {
                     ) : 'R$ 9,00'}
                   </div>
 
-                  {/* Coupon Field in Intro */}
-                  {!appliedCoupon && (
-                    <div className="flex gap-2 max-w-xs mx-auto mb-8">
-                      <input 
-                        type="text" 
-                        placeholder="CUPOM" 
-                        className="input flex-1 py-2 text-[10px] uppercase tracking-widest"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      />
-                      <button 
-                        onClick={applyCoupon}
-                        disabled={isApplyingCoupon || !couponCode.trim()}
-                        className="px-4 py-2 bg-gold-main/10 hover:bg-gold-main text-gold-main hover:text-black rounded-xl text-[9px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
-                      >
-                        {isApplyingCoupon ? '...' : 'Aplicar'}
-                      </button>
-                    </div>
-                  )}
-                  {appliedCoupon && (
-                    <div className="flex items-center justify-center gap-2 mb-8 text-emerald-400 text-[10px] uppercase tracking-widest font-bold">
-                      <CheckCircle size={14} /> Cupom {appliedCoupon.code} Aplicado
-                      <button onClick={() => setAppliedCoupon(null)} className="text-white/20 hover:text-white ml-2"><X size={12} /></button>
-                    </div>
-                  )}
-                  {couponError && <p className="text-red-400/60 text-[9px] mb-4 italic">{couponError}</p>}
-
                   {(isAdmin || (access?.mappingCredits && access.mappingCredits > 0)) ? (
                     <div className="mb-6">
                       {isAdmin ? (
@@ -2350,6 +2331,7 @@ const Diagnostico = () => {
                         </span>
                       )}
                       <button 
+                        type="button"
                         onClick={() => showPage('mapeamento_form')}
                         className="button w-full bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
                       >
@@ -2358,6 +2340,7 @@ const Diagnostico = () => {
                     </div>
                   ) : (
                     <button 
+                      type="button"
                       onClick={() => {
                         setSelectedProduct({ name: 'Mapeamento Emocional Floral', price: 'R$ 9' });
                         showPage('checkout');
@@ -2370,6 +2353,7 @@ const Diagnostico = () => {
 
                   {isAdmin && (
                     <button 
+                      type="button"
                       onClick={() => showPage('mapeamento_form')}
                       className="text-emerald-400 hover:text-emerald-300 text-[10px] uppercase tracking-widest font-bold flex items-center justify-center gap-2 py-4 border border-emerald-500/20 rounded-2xl bg-emerald-500/5 hover:bg-emerald-500/10 transition-all w-full"
                     >
@@ -3836,7 +3820,10 @@ ESTRUTURA DA RESPOSTA (Markdown):
                         <div className="flex justify-end items-center mt-2">
                           <button 
                             type="button"
-                            onClick={() => showPage('auth')}
+                            onClick={() => {
+                              setIntendedPage('checkout');
+                              setPage('auth');
+                            }}
                             className="text-gold-main/40 text-[10px] hover:text-gold-main transition-colors text-right font-bold uppercase tracking-widest"
                           >
                             Já tem uma conta? Entre aqui
@@ -3855,9 +3842,21 @@ ESTRUTURA DA RESPOSTA (Markdown):
 
                   <div className="glass-card p-6 md:p-10">
                     <h3 className="text-gold-main/40 font-bold tracking-[0.3em] uppercase text-[10px] mb-8">Pagamento</h3>
-                    <div className="p-6 md:p-10 border border-dashed border-gold-main/10 rounded-3xl text-center bg-white/[0.01]">
-                      <p className="text-gold-main/40 text-xs italic font-medium mb-2">Pagamento Seguro</p>
-                      <p className="text-white/20 text-[10px] font-light">Sua transação é protegida com criptografia de ponta a ponta via Stripe.</p>
+                    <div className="p-6 md:p-10 border border-dashed border-gold-main/10 rounded-3xl text-center bg-white/[0.01] space-y-4">
+                      <div className="flex justify-center gap-4 mb-2">
+                        <CreditCard className="text-gold-main/40" size={24} />
+                        <ShieldCheck className="text-gold-main/40" size={24} />
+                      </div>
+                      <p className="text-gold-main/60 text-xs font-medium">Checkout Seguro via Stripe</p>
+                      <p className="text-white/20 text-[10px] font-light leading-relaxed">
+                        Aceitamos Cartão de Crédito e PIX (via Stripe). Sua transação é protegida com criptografia de ponta a ponta.
+                      </p>
+                      <div className="pt-4 flex flex-col gap-2">
+                        <p className="text-[9px] text-white/10 uppercase tracking-widest">Instruções:</p>
+                        <p className="text-[10px] text-white/30 italic">1. Clique em "Ativar Agora" abaixo</p>
+                        <p className="text-[10px] text-white/30 italic">2. Você será levado ao ambiente seguro do Stripe</p>
+                        <p className="text-[10px] text-white/30 italic">3. Após o pagamento, você retornará automaticamente</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3898,6 +3897,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                             onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                           />
                           <button 
+                            type="button"
                             onClick={applyCoupon}
                             disabled={isApplyingCoupon || !couponCode.trim()}
                             className="px-4 py-2 bg-gold-main/10 hover:bg-gold-main text-gold-main hover:text-black rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
@@ -3919,6 +3919,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                     <div className="flex flex-col gap-4 mt-12">
                       {access?.diagnostico_comprado && selectedProduct?.name === 'Mapeamento Emocional Floral' ? (
                         <button 
+                          type="button"
                           onClick={() => showPage('mapeamento_form')}
                           className="button w-full bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
                         >
@@ -3926,6 +3927,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                         </button>
                       ) : access?.clube_ativo && selectedProduct?.name.includes('Clube') ? (
                         <button 
+                          type="button"
                           onClick={() => showPage('clube_clarear_content')}
                           className="button w-full bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
                         >
@@ -3934,6 +3936,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                       ) : (
                         <>
                           <button 
+                            type="button"
                             onClick={handleCheckoutAndSignup}
                             disabled={isProcessingPayment}
                             className="button w-full disabled:opacity-50 disabled:cursor-not-allowed"
