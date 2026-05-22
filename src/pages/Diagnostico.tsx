@@ -2081,7 +2081,7 @@ const Diagnostico = () => {
                 </div>
               </motion.header>
 
-              <motion.div variants={itemVariants} className="space-y-24">
+              <motion.div variants={itemVariants} className="space-y-12 md:space-y-24">
                 {/* Triage Quiz Section */}
                 <div className="glass-card border-gold-main/20 bg-gold-main/[0.02] p-8 md:p-12 text-center max-w-3xl mx-auto">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.5em] block font-bold mb-6">Orientação</span>
@@ -2097,6 +2097,21 @@ const Diagnostico = () => {
                   </button>
                 </div>
 
+                {/* Hero text: apresentação antes dos Caminhos */}
+                <motion.div variants={itemVariants} className="text-center max-w-2xl mx-auto space-y-4 py-8">
+                  <p className="text-white/25 text-[10px] uppercase tracking-[0.5em] font-bold">
+                    Alinhamento Interno
+                  </p>
+                  <h2 className="serif text-4xl md:text-5xl text-gold-light leading-tight font-serif">
+                    Quando sua base está desalinhada,<br />
+                    <em className="text-gold-main/70 font-light italic">tudo parece mais difícil.</em>
+                  </h2>
+                  <p className="text-white/35 font-light leading-relaxed text-base max-w-lg mx-auto">
+                    Decisões, relacionamentos, propósito — tudo flui melhor quando você está em posição.
+                    Escolha o caminho que faz sentido para o seu momento agora.
+                  </p>
+                </motion.div>
+
                 {/* Main Journeys Section */}
                 <div className="space-y-12">
                   <div className="flex items-center gap-6">
@@ -2106,19 +2121,70 @@ const Diagnostico = () => {
                   </div>
                   <div className="grid md:grid-cols-2 gap-12">
                     {[
-                      { id: 'mapeamento_intro', title: 'Mapeamento Emocional Floral', desc: 'Descubra sua emoção dominante, seu arquétipo ativo e sua fórmula floral personalizada.', tag: 'Mapeamento' },
-                      { id: 'rituais_mes_info', title: 'Rituais do Mês', desc: 'Rituais coletivos realizados off-line e enviados por mensagem vídeo e áudio.', tag: 'Agenda' },
-                      { id: 'clube_taro_info', title: 'Clube do Tarô', desc: 'Orientação semanal e leitura energética mensal para manter o fluxo constante.', tag: 'Comunidade' },
-                      { id: 'biblioteca', title: 'Biblioteca de E-books', desc: 'Sua estante virtual premium de materiais, guias e e-books exclusivos organizados com elegância.', tag: 'Conteúdo Premium' },
-                      { id: 'clube_clarear_info', title: 'Clube Clarear', desc: isAdmin ? 'Práticas semanais focadas em clareza mental e estabilidade emocional profunda.' : 'Em construção. Práticas semanais focadas em clareza mental e estabilidade emocional profunda.', tag: isAdmin ? 'Prática' : 'Em Construção' },
-                      { id: 'reprogramacao_pessoal_info', title: 'Reprogramação Pessoal', desc: 'Áudio de frequência personalizada para alinhar sua base interna através de uma sessão individual.', tag: 'Atendimento Único' },
-                      { id: 'diagnostico_info', title: 'Diagnóstico POSIÇÃO', desc: 'Mapeie sua frequência atual e descubra o caminho exato para o seu alinhamento.', tag: 'Mapeamento' }
+                      {
+                        id: 'mapeamento_intro',
+                        title: 'Mapeamento Emocional Floral',
+                        desc: 'Descubra sua emoção dominante, seu arquétipo ativo e sua fórmula floral personalizada.',
+                        tag: 'Mapeamento',
+                        cta: 'Descobrir meu padrão',
+                      },
+                      {
+                        id: 'rituais_mes_info',
+                        title: 'Rituais do Mês',
+                        desc: 'Reconecte-se com os ciclos da vida. Rituais lunares guiados, entregues direto para você praticar no seu ritmo.',
+                        tag: 'Agenda',
+                        cta: 'Ver rituais do mês',
+                      },
+                      {
+                        id: 'clube_taro_info',
+                        title: 'Clube do Tarô',
+                        desc: 'Orientação semanal e leitura energética mensal para manter o fluxo constante.',
+                        tag: 'Comunidade',
+                        cta: 'Entrar para o Clube',
+                      },
+                      {
+                        id: 'biblioteca',
+                        title: 'Biblioteca de E-books',
+                        desc: 'Sua estante virtual premium de materiais, guias e e-books exclusivos.',
+                        tag: 'Conteúdo Premium',
+                        cta: 'Explorar biblioteca',
+                      },
+                      {
+                        id: 'clube_clarear_info',
+                        title: 'Clube Clarear',
+                        desc: isAdmin
+                          ? 'Práticas semanais focadas em clareza mental e estabilidade emocional profunda.'
+                          : 'Em breve: práticas semanais focadas em clareza mental e estabilidade emocional.',
+                        tag: isAdmin ? 'Prática' : 'Em Breve',
+                        cta: isAdmin ? 'Acessar o Clube' : 'Entrar na lista de espera',
+                      },
+                      {
+                        id: 'reprogramacao_pessoal_info',
+                        title: 'Reprogramação Pessoal',
+                        desc: 'Áudio de frequência personalizada para alinhar sua base interna através de uma sessão individual.',
+                        tag: 'Atendimento Único',
+                        cta: 'Criar minha frequência',
+                      },
+                      {
+                        id: 'diagnostico_info',
+                        title: 'Diagnóstico POSIÇÃO',
+                        desc: 'Mapeie sua frequência atual e descubra o caminho exato para o seu alinhamento.',
+                        tag: 'Mapeamento',
+                        cta: 'Iniciar diagnóstico',
+                      },
                     ].map((item) => (
                       <motion.div 
                         key={item.id}
                         variants={itemVariants}
                         className="glass-card flex flex-col justify-between group cursor-pointer"
                         onClick={() => {
+                          if (item.id === 'clube_clarear_info' && !isAdmin) {
+                            setNotification({
+                              message: '✉️ Lista de espera aberta! Em breve você receberá novidades.',
+                              type: 'info'
+                            });
+                            return;
+                          }
                           if (item.id === 'biblioteca') {
                             navigate('/biblioteca');
                           } else {
@@ -2131,7 +2197,7 @@ const Diagnostico = () => {
                           <h2 className="serif text-4xl text-gold-light mb-6 group-hover:text-gold-main transition-colors duration-500">{item.title}</h2>
                           <p className="text-white/40 text-sm leading-relaxed mb-10 font-light">{item.desc}</p>
                         </div>
-                        <button className="button-outline w-full">Explorar</button>
+                        <button className="button-outline w-full">{item.cta}</button>
                       </motion.div>
                     ))}
                   </div>
@@ -2293,6 +2359,9 @@ const Diagnostico = () => {
               className="animate-screen text-center max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => setPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Mapeamento Emocional Floral
+              </p>
               <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] mb-6 block font-bold">🌿 Mapeamento Emocional Floral</span>
               <h2 className="serif text-5xl md:text-6xl text-gold-light mb-12">Você não sente o que sente por acaso.</h2>
               
@@ -2728,6 +2797,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Diagnóstico POSIÇÃO
+              </p>
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-6 md:mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Mapeamento de Frequência</span>
@@ -2775,6 +2847,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Reprogramação Pessoal
+              </p>
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Frequência Personalizada</span>
@@ -2831,6 +2906,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Clube Clarear
+              </p>
               {!isAdmin ? (
                 <div className="glass-card p-12 text-center">
                   <Clock className="mx-auto text-gold-main/20 mb-6" size={48} />
@@ -2898,6 +2976,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Rituais do Mês
+              </p>
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01] mb-12">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Agenda Mensal</span>
@@ -2978,6 +3059,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-4xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Conteúdo do Clube Clarear
+              </p>
               
               {!isAdmin ? (
                 <div className="glass-card p-12 text-center">
@@ -3058,6 +3142,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-4xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Conteúdo do Clube do Tarô
+              </p>
               
               <header className="mb-10 md:mb-16 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
@@ -3134,6 +3221,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Reprograme-se
+              </p>
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Transformação Estrutural</span>
@@ -3190,6 +3280,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('home')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Clube do Tarô
+              </p>
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Orientação Energética</span>
@@ -4060,6 +4153,9 @@ ESTRUTURA DA RESPOSTA (Markdown):
               className="animate-screen text-left max-w-2xl mx-auto"
             >
               <div className="back" onClick={() => showPage('diagnostico_info')}>← Voltar</div>
+              <p className="text-[10px] text-white/15 uppercase tracking-widest mb-6 font-bold">
+                Início → Diagnóstico POSIÇÃO → Quiz
+              </p>
               <div className="glass-card border-gold-main/20 bg-gold-main/[0.01]">
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-gold-main/30 text-[10px] uppercase tracking-[0.4em] block font-bold">Mergulho Interno</span>
