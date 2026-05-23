@@ -2724,7 +2724,7 @@ const Diagnostico = () => {
                             let floraisList = suggestedFlorais;
                             try {
                               const selectResponse = await ai.models.generateContent({
-                                model: "gemini-3-flash-preview",
+                                model: "gemini-1.5-flash",
                                 contents: `Você é um especialista em Florais de Bach.
 Com base nas respostas do quiz abaixo, selecione a fórmula ideal (4 a 6 florais).
 
@@ -2748,7 +2748,7 @@ REGRAS:
                             let resultText = "";
                             try {
                               const reportResponse = await ai.models.generateContent({
-                                model: "gemini-3.1-pro-preview",
+                                model: "gemini-1.5-pro",
                                 contents: `Você é um especialista em análise emocional e Florais de Bach.
 Gere um relatório terapêutico personalizado (Mapeamento Emocional Floral).
 
@@ -2778,7 +2778,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                               console.error("Error generating report with Pro:", e);
                               // Fallback to Flash if Pro fails
                               const fallbackResponse = await ai.models.generateContent({
-                                model: "gemini-3-flash-preview",
+                                model: "gemini-1.5-flash",
                                 contents: `Gere um relatório simplificado de mapeamento emocional floral com base nestes dados: ${quizContext}. Florais: ${floraisList}. Escolha um Arcano de: ${ARCANOS_MATRIZ.map(a => a.arcano).join(', ')}. Retorne no formato: ARCANO: [Nome], seguido da análise.`,
                               });
                               resultText = fallbackResponse.text || "Não foi possível gerar o relatório completo no momento.";
