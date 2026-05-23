@@ -3162,7 +3162,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                 </div>
                 <div className="flex flex-col gap-4">
                   <button 
-                    onClick={() => window.open('https://wa.me/5511999999999?text=Olá! Gostaria de fazer minha pergunta semanal do Clube do Tarô.', '_blank')}
+                    onClick={() => window.open('https://wa.me/5548991261832?text=Olá! Gostaria de fazer minha pergunta semanal do Clube do Tarô.', '_blank')}
                     className="button bg-emerald-500/10 border-emerald-500/30 text-emerald-400 flex items-center gap-3 px-6 py-3 rounded-full hover:bg-emerald-500/20 transition-all"
                   >
                     <MessageCircle size={18} />
@@ -3197,7 +3197,7 @@ ESTRUTURA DA RESPOSTA (Markdown):
                     <h4 className="serif text-xl text-gold-light mb-4">Sua Pergunta Semanal</h4>
                     <p className="text-white/40 text-sm mb-6 font-light">Você tem direito a uma pergunta direcionada por semana. Nossa equipe responderá em até 24h úteis.</p>
                     <button 
-                      onClick={() => window.open('https://wa.me/5511999999999?text=Olá! Gostaria de fazer minha pergunta semanal do Clube do Tarô.', '_blank')}
+                      onClick={() => window.open('https://wa.me/5548991261832?text=Olá! Gostaria de fazer minha pergunta semanal do Clube do Tarô.', '_blank')}
                       className="text-emerald-400 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 group-hover:gap-4 transition-all"
                     >
                       Enviar agora <ArrowRight size={14} />
