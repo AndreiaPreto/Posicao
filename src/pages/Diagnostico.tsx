@@ -23,6 +23,7 @@ import { jsPDF } from 'jspdf';
 import { useAccess } from '../context/AccessContext';
 import { Menu, LogIn, UserPlus, LogOut, User as UserIcon, Play, Pause, Volume2, Clock, Music, Settings, Plus, Trash2, Upload, ShieldCheck, History, ChevronRight, Calendar, Users, BarChart3, Package, FileText, LayoutDashboard, CheckCircle, MessageCircle, ArrowRight, Tag, X, Check, CreditCard, Eye, EyeOff } from 'lucide-react';
 import ClubeClarearListaEspera from './ClubeClarear_ListaEspera';
+import { Testimonials } from '../components/Testimonials';
 
 interface AppUser {
   id: string;
@@ -2878,6 +2879,9 @@ const Diagnostico = () => {
                   </div>
                 </div>
               </motion.div>
+
+              {/* Testimonials (Social Proof) Section */}
+              <Testimonials />
 
               {/* Quem é Andréia Section */}
               <motion.div 
