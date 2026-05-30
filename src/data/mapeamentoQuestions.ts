@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  src/data/mapeamentoQuestions.ts — VERSÃO CORRIGIDA
+//  src/data/mapeamentoQuestions.ts: VERSÃO CORRIGIDA
 //  Correções aplicadas:
 //  ✓ Florais imprecisos corrigidos (Tristeza, Abandono, Falta controle)
 //  ✓ Pergunta 3 gramaticalmente completa
@@ -57,33 +57,33 @@ export const mapeamentoQuestions = [
     pergunta: "Como você percebe seu ritmo interno hoje?",
     opcoes: [
       {
-        texto: "Acelerado — não consigo parar ou descansar",
+        texto: "Acelerado, não consigo parar ou descansar",
         emocao: "agitacao",
         peso: 2,
         florais: ["Impatiens", "White Chestnut"]
       },
       {
         // CORRIGIDO: "Oscilando" trocado por "Pesado" para capturar Oak/Elm
-        texto: "Pesado — como se carregasse um peso que não para",
+        texto: "Pesado, como se carregasse um peso que não para",
         emocao: "sobrecarga_fisica",
         peso: 2,
         florais: ["Oak", "Elm"]
       },
       {
         // NOVO: Vazio captura Wild Rose e Clematis (não cobertos antes)
-        texto: "Vazio — sem energia nem vontade de nada",
+        texto: "Vazio, sem energia nem vontade de nada",
         emocao: "apatia",
         peso: 2,
         florais: ["Wild Rose", "Clematis", "Hornbeam"]
       },
       {
-        texto: "Travado — quero agir mas não consigo",
+        texto: "Travado, quero agir mas não consigo",
         emocao: "bloqueio",
         peso: 2,
         florais: ["Hornbeam", "Larch"]
       },
       {
-        texto: "Confuso — sem clareza sobre o que sinto",
+        texto: "Confuso, sem clareza sobre o que sinto",
         emocao: "confusao",
         peso: 2,
         florais: ["Wild Oat", "Scleranthus"]
@@ -97,7 +97,7 @@ export const mapeamentoQuestions = [
     pergunta: "Como seus pensamentos se comportam no dia a dia?",
     opcoes: [
       {
-        texto: "Se repetem o tempo todo — não consigo desligar",
+        texto: "Se repetem o tempo todo, não consigo desligar",
         emocao: "ruminacao",
         peso: 3,
         florais: ["White Chestnut"]
@@ -109,13 +109,13 @@ export const mapeamentoQuestions = [
         florais: ["Aspen", "Mimulus", "Red Chestnut"]
       },
       {
-        texto: "Mudam constantemente — impossível manter foco",
+        texto: "Mudam constantemente, impossível manter foco",
         emocao: "instabilidade",
         peso: 2,
         florais: ["Scleranthus", "Clematis"]
       },
       {
-        texto: "Geram indecisão — fico sem saber o que fazer",
+        texto: "Geram indecisão, fico sem saber o que fazer",
         emocao: "indecisao",
         peso: 3,
         florais: ["Cerato", "Scleranthus", "Wild Oat"]
@@ -134,8 +134,8 @@ export const mapeamentoQuestions = [
     pergunta: "O que mais te desestabiliza atualmente?",
     opcoes: [
       {
-        // CORRIGIDO: Cherry Plum sozinho era impreciso — adicionado Rock Rose e Elm
-        texto: "Sensação de perder o controle — da mente ou da situação",
+        // CORRIGIDO: Cherry Plum sozinho era impreciso | adicionado Rock Rose e Elm
+        texto: "Sensação de perder o controle, seja da mente ou da situação",
         emocao: "controle",
         peso: 3,
         florais: ["Cherry Plum", "Rock Rose", "Elm"]
@@ -190,7 +190,7 @@ export const mapeamentoQuestions = [
         florais: ["Agrimony", "Water Violet"]
       },
       {
-        texto: "Se cobrar mais — como se o problema fosse sua falta de esforço",
+        texto: "Se cobrar mais, como se o problema fosse sua falta de esforço",
         emocao: "autoexigencia",
         peso: 3,
         florais: ["Pine", "Larch", "Rock Water"]
@@ -228,7 +228,7 @@ export const mapeamentoQuestions = [
         florais: ["Scleranthus", "Cerato", "Wild Oat"]
       },
       {
-        texto: "Busco aprovação — fico insecure sem validação externa",
+        texto: "Busco aprovação, fico insegura sem validação externa",
         emocao: "dependencia",
         peso: 3,
         florais: ["Cerato", "Centaury", "Larch"]
@@ -285,33 +285,33 @@ export const mapeamentoQuestions = [
     pergunta: "Seu corpo tem respondido com:",
     opcoes: [
       {
-        texto: "Tensão muscular constante — mandíbula, pescoço, ombros",
+        texto: "Tensão muscular constante, como mandíbula, pescoço e ombros",
         emocao: "tensao",
         peso: 2,
         // CORRIGIDO: Impatiens + Rock Water para tensão muscular crônica
         florais: ["Impatiens", "Rock Water", "Vervain"]
       },
       {
-        texto: "Cansaço extremo — mesmo depois de descansar",
+        texto: "Cansaço extremo, mesmo depois de descansar",
         emocao: "exaustao",
         peso: 3,
         florais: ["Olive", "Hornbeam"]
       },
       {
-        texto: "Dificuldade para dormir — mente que não para",
+        texto: "Dificuldade para dormir, mente que não para",
         emocao: "insonia",
         peso: 3,
         florais: ["White Chestnut", "Agrimony"]
       },
       {
-        texto: "Agitação — ansiedade que sinto no corpo físico",
+        texto: "Agitação, ansiedade que sinto no corpo físico",
         emocao: "agitacao",
         peso: 2,
         // CORRIGIDO: Impatiens mais preciso que Vervain para agitação física
         florais: ["Impatiens", "Vervain"]
       },
       {
-        texto: "Falta de energia — dificuldade de começar qualquer coisa",
+        texto: "Falta de energia, dificuldade de começar qualquer coisa",
         emocao: "desanimo",
         peso: 2,
         florais: ["Hornbeam", "Wild Rose", "Gentian"]
@@ -337,13 +337,13 @@ export const mapeamentoQuestions = [
         florais: ["Pine", "Larch"]
       },
       {
-        texto: "Algo sempre vai dar errado — nunca consigo manter o bom",
+        texto: "Algo sempre vai dar errado, nunca consigo manter o bom",
         emocao: "desanimo",
         peso: 2,
         florais: ["Gentian", "Sweet Chestnut"]
       },
       {
-        texto: "Eu não posso errar — a perfeição é o mínimo esperado",
+        texto: "Eu não posso errar, a perfeição é o mínimo esperado",
         emocao: "perfeccionismo",
         peso: 3,
         florais: ["Rock Water", "Pine"]
@@ -362,32 +362,32 @@ export const mapeamentoQuestions = [
     pergunta: "O que você mais precisa neste momento?",
     opcoes: [
       {
-        texto: "Paz mental — que os pensamentos parem",
+        texto: "Paz mental, para os pensamentos pararem",
         emocao: "calma",
         // CORRIGIDO: peso 2 (era 1) para que florais de expansão entrem na fórmula
         peso: 2,
         florais: ["White Chestnut", "Agrimony"]
       },
       {
-        texto: "Clareza — saber exatamente o que fazer",
+        texto: "Clareza, saber exatamente o que fazer",
         emocao: "clareza",
         peso: 2,
         florais: ["Scleranthus", "Wild Oat", "Cerato"]
       },
       {
-        texto: "Segurança — sentir que estou protegida",
+        texto: "Segurança, sentir que estou protegida",
         emocao: "seguranca",
         peso: 2,
         florais: ["Aspen", "Mimulus", "Rock Rose"]
       },
       {
-        texto: "Coragem — para dar o passo que sei que preciso dar",
+        texto: "Coragem para dar o passo que sei que preciso dar",
         emocao: "coragem",
         peso: 2,
         florais: ["Mimulus", "Larch", "Centaury"]
       },
       {
-        texto: "Leveza — parar de me cobrar tanto",
+        texto: "Leveza, parar de me cobrar tanto",
         emocao: "leveza",
         peso: 2,
         florais: ["Agrimony", "Pine", "Mustard"]
@@ -397,7 +397,7 @@ export const mapeamentoQuestions = [
   {
     id: 11,
     tipo: "relacional",
-    // NOVO: pergunta para capturar Holly, Willow, Honeysuckle — antes ausentes
+    // NOVO: pergunta para capturar Holly, Willow, Honeysuckle | antes ausentes
     pergunta: "Quando pensa em pessoas próximas, o que mais sente?",
     opcoes: [
       {
@@ -425,7 +425,7 @@ export const mapeamentoQuestions = [
         florais: ["Red Chestnut", "Chicory"]
       },
       {
-        texto: "Prefiro não pensar nisso — guardo tudo para mim",
+        texto: "Prefiro não pensar nisso, guardo tudo para mim",
         emocao: "repressao_relacional",
         peso: 2,
         florais: ["Agrimony", "Water Violet"]
