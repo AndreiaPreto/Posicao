@@ -479,7 +479,7 @@ async function startServer() {
   await ensureProductsExist();
 
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   // Middleware for Stripe Webhook (needs raw body)
   app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, res) => {
